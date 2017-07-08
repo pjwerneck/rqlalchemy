@@ -16,12 +16,6 @@ from sqlalchemy.inspection import inspect
 from werkzeug.exceptions import BadRequest
 
 
-__title__ = 'flask-rql'
-__version__ = '0.1.0'
-__author__ = 'Pedro Werneck'
-__license__ = 'MIT'
-
-
 class RQLQueryMixIn:
 
     def rql(self, request, limit=None):
