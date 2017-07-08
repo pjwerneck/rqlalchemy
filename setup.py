@@ -33,7 +33,7 @@ install = [
     ]
 
 setup(
-    name='pyrql',
+    name='flask-rql',
     version=version,
     description='Resource Query Language for Flask',
     packages=['flask_rql'],
