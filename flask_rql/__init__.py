@@ -5,7 +5,7 @@ from flask_rql.sa import RQLQueryMixIn
 
 
 __title__ = 'flask-rql'
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __author__ = 'Pedro Werneck'
 __license__ = 'MIT'
 

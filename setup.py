@@ -21,7 +21,7 @@ if sys.argv[-1] == 'test':
     sys.exit(bool(errors))
 
 
-with open('flask_rql.py', 'r') as fd:
+with open('flask_rql/__init__.py', 'r') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
 
