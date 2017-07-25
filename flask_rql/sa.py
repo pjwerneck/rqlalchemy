@@ -38,7 +38,7 @@ class RQLQueryMixIn:
             except RQLSyntaxError as exc:
                 raise BadRequest("RQL Syntax error: %r" % (exc.args,))
 
-        self._rql_select_clause = None
+        self._rql_select_clause = []
         self._rql_where_clause = None
         self._rql_order_by_clause = None
         self._rql_limit_clause = None
@@ -229,3 +229,14 @@ class RQLQueryMixIn:
 
     def _rql_dt(self, args):
         return datetime.datetime(*args)
+
+    def _rql_select(self, args):
+        self._rql_select_clause.extend(args)
+
+    def collection(self):
+        if not self._rql_select_clause:
+            return self.all()
+
+        keys = self._rql_select_clause
+
+        return [{k: getattr(obj, k) for k in keys} for obj in self]
