@@ -34,7 +34,7 @@ class RQLQueryMixIn:
             self.rql_expr = ''
 
         else:
-            self.rql_expr = expr = unquote(expr)
+            self.rql_expr = expr
 
             try:
                 self.rql_parsed = parse(expr)
