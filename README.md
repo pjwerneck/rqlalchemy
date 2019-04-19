@@ -1,2 +1,2 @@
-# flask-rql
-Resource Query Language extension for Flask
+# rqlalchemy
+Resource Query Language extension for SQLAlchemy
