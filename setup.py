@@ -21,22 +21,20 @@ if sys.argv[-1] == 'test':
     sys.exit(bool(errors))
 
 
-with open('flask_rql/__init__.py', 'r') as fd:
+with open('rqlalchemy/__init__.py', 'r') as fd:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                         fd.read(), re.MULTILINE).group(1)
 
 install = [
     'pyrql',
     'sqlalchemy',
-    'werkzeug',
-    'flask',
-    ]
+]
 
 setup(
-    name='flask-rql',
+    name='rqlalchemy',
     version=version,
-    description='Resource Query Language for Flask',
-    packages=['flask_rql'],
+    description='Resource Query Language for SQLAlchemy',
+    packages=['rqlalchemy'],
     tests_require=['pytest'],
     install_requires=install,
-    )
+)

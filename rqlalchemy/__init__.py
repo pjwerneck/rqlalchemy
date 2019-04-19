@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 
-from flask_rql.sa import RQLQueryMixIn
+from rqlalchemy.query import RQLQueryMixIn
 
 
-__title__ = 'flask-rql'
-__version__ = '0.1.4'
+__title__ = 'rqlalchemy'
+__version__ = '0.2.0'
 __author__ = 'Pedro Werneck'
 __license__ = 'MIT'
 

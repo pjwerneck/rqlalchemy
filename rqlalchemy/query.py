@@ -13,18 +13,21 @@ from sqlalchemy import and_
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.inspection import inspect
-from werkzeug.exceptions import BadRequest
+
+
+class RQLQueryError(Exception):
+    pass
 
 
 class RQLQueryMixIn:
 
-    def rql(self, request, limit=None):
+    _rql_error_cls = RQLQueryError
+
+    def rql(self, query, limit=None):
         if len(self._entities) > 1:
             raise NotImplementedError("Query must have a single entity")
 
-        expr = request.query_string
-        if type(expr) is bytes:
-            expr = expr.decode(request.charset)
+        expr = query
 
         if not expr:
             self.rql_parsed = None
@@ -36,7 +39,7 @@ class RQLQueryMixIn:
             try:
                 self.rql_parsed = parse(expr)
             except RQLSyntaxError as exc:
-                raise BadRequest("RQL Syntax error: %r" % (exc.args,))
+                raise self._rql_error_cls("RQL Syntax error: %r" % (exc.args,))
 
         self._rql_select_clause = []
         self._rql_where_clause = None
@@ -111,7 +114,7 @@ class RQLQueryMixIn:
             try:
                 method = getattr(self, '_rql_' + name)
             except AttributeError:
-                raise BadRequest("Invalid query function: %s" % name)
+                raise self._rql_error_cls("Invalid query function: %s" % name)
 
             return method(args)
 
@@ -129,7 +132,7 @@ class RQLQueryMixIn:
             try:
                 return getattr(model, attr)
             except AttributeError:
-                raise BadRequest("Invalid query attribute: %s" % attr)
+                raise self._rql_error_cls("Invalid query attribute: %s" % attr)
 
         elif isinstance(attr, tuple) and len(attr) == 2:
             relationships = inspect(model).relationships.keys()

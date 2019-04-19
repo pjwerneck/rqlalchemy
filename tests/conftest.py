@@ -1,51 +1,42 @@
 # -*- coding: utf-8 -*-
 
 import json
-import pytest
 import os
 
+import pytest
+
+from fixtures import Base
+from fixtures import RQLQuery
 from fixtures import User
-from fixtures import create_app
-from fixtures import db as db_
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope='session')
-def app(request):
-
-    app_ = create_app()
-
-    ctx = app_.app_context()
-    ctx.push()
-
-    def teardown():
-        ctx.pop()
-
-    request.addfinalizer(teardown)
-
-    return app_
+def engine():
+    return create_engine('sqlite:///:memory:', echo=False)
 
 
-@pytest.fixture(scope='session')
-def db(app, request):
+@pytest.yield_fixture(scope='session')
+def session(engine):
 
-    def teardown():
-        db_.drop_all()
+    Base.metadata.create_all(engine)
 
-    db_.app = app
-    db_.create_all()
-
-    request.addfinalizer(teardown)
+    session_ = sessionmaker(bind=engine, query_cls=RQLQuery)
 
     # load fixtures
     fpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'users.json')
 
+    localsession = session_()
     with open(fpath) as f:
         users = json.load(f)
 
         for raw in users:
             obj = User(**raw)
-            db_.session.add(obj)
+            localsession.add(obj)
 
-        db_.session.commit()
+    localsession.commit()
 
-    return db_
+    yield session_()
+
+    Base.metadata.drop_all(engine)
