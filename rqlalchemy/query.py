@@ -4,12 +4,12 @@ import datetime
 import operator
 from copy import deepcopy
 from functools import reduce
-from urllib.parse import unquote
 
 from pyrql import RQLSyntaxError
 from pyrql import parse
 from pyrql import unparse
 from sqlalchemy import and_
+from sqlalchemy import func
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.inspection import inspect
@@ -42,6 +42,8 @@ class RQLQueryMixIn:
                 raise self._rql_error_cls("RQL Syntax error: %r" % (exc.args,))
 
         self._rql_select_clause = []
+        self._rql_values_clause = None
+        self._rql_scalar_clause = None
         self._rql_where_clause = None
         self._rql_order_by_clause = None
         self._rql_limit_clause = None
@@ -224,6 +226,48 @@ class RQLQueryMixIn:
 
         return attr.contains(value)
 
+    def _rql_excludes(self, args):
+        attr, value = args
+        attr = self._rql_attr(attr)
+        value = self._rql_value(value, attr)
+
+        return not_(attr.contains(value))
+
+    def _rql_select(self, args):
+        attrs = [self._rql_attr(attr) for attr in args]
+        self._rql_select_clause = attrs
+
+    def _rql_values(self, args):
+        (attr,) = args
+        attr = self._rql_attr(attr)
+        self._rql_values_clause = attr
+
+    def _rql_sum(self, args):
+        (attr,) = args
+        attr = self._rql_attr(attr)
+        self._rql_values_clause = func.sum(attr)
+
+    def _rql_mean(self, args):
+        (attr,) = args
+        attr = self._rql_attr(attr)
+        self._rql_scalar_clause = func.avg(attr)
+
+    def _rql_max(self, args):
+        (attr,) = args
+        attr = self._rql_attr(attr)
+        self._rql_scalar_clause = func.max(attr)
+
+    def _rql_min(self, args):
+        (attr,) = args
+        attr = self._rql_attr(attr)
+        self._rql_scalar_clause = func.min(attr)
+
+    def _rql_count(self, args):
+        self._rql_scalar_clause = func.count()
+
+    def _rql_first(self, args):
+        self._rql_limit_clause = 1
+
     def _rql_time(self, args):
         return datetime.time(*args)
 
@@ -233,13 +277,26 @@ class RQLQueryMixIn:
     def _rql_dt(self, args):
         return datetime.datetime(*args)
 
-    def _rql_select(self, args):
-        self._rql_select_clause.extend(args)
-
     def collection(self):
+        # Method kept for backwards compatibility. Use rql_all instead.
         if not self._rql_select_clause:
             return self.all()
 
         keys = self._rql_select_clause
 
         return [{k: getattr(obj, k) for k in keys} for obj in self]
+
+    def rql_all(self):
+
+        if self._rql_scalar_clause is not None:
+            return self.from_self(self._rql_scalar_clause).scalar()
+
+        if self._rql_values_clause is not None:
+            query = self.from_self(self._rql_values_clause)
+            return [row[0] for row in query]
+
+        if self._rql_select_clause:
+            query = self.from_self(*self._rql_select_clause)
+            return [row._asdict() for row in query]
+
+        return self.all()
