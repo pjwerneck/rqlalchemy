@@ -96,9 +96,6 @@ class TestQuery:
         assert len(res) == 1
         assert res == exp
 
-    def test_one(self, session):
-        pass
-
     def test_count(self, session):
         res = session.query(User).rql('count()').rql_all()
         exp = session.query(User).count()

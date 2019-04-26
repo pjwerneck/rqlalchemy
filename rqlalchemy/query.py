@@ -277,15 +277,6 @@ class RQLQueryMixIn:
     def _rql_dt(self, args):
         return datetime.datetime(*args)
 
-    def collection(self):
-        # Method kept for backwards compatibility. Use rql_all instead.
-        if not self._rql_select_clause:
-            return self.all()
-
-        keys = self._rql_select_clause
-
-        return [{k: getattr(obj, k) for k in keys} for obj in self]
-
     def rql_all(self):
 
         if self._rql_scalar_clause is not None:
