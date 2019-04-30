@@ -9,20 +9,20 @@ from fixtures import User
 class TestQuery:
 
     def test_simple_sort(self, session):
-        res = session.query(User).rql('sort(distance)').rql_all()
-        exp = session.query(User).order_by(User.distance).all()
+        res = session.query(User).rql('sort(balance)').rql_all()
+        exp = session.query(User).order_by(User.balance).all()
         assert res
         assert res == exp
 
     def test_simple_sort_desc(self, session):
-        res = session.query(User).rql('sort(-distance)').rql_all()
-        exp = session.query(User).order_by(User.distance.desc()).all()
+        res = session.query(User).rql('sort(-balance)').rql_all()
+        exp = session.query(User).order_by(User.balance.desc()).all()
         assert res
         assert res == exp
 
     def test_complex_sort(self, session):
-        res = session.query(User).rql('sort(distance,last_seen,birthdate)').rql_all()
-        exp = session.query(User).order_by(User.distance, User.last_seen, User.birthdate).all()
+        res = session.query(User).rql('sort(balance,registered,birthdate)').rql_all()
+        exp = session.query(User).order_by(User.balance, User.registered, User.birthdate).all()
         assert res
         assert res == exp
 
@@ -38,15 +38,27 @@ class TestQuery:
         assert res
         assert res == exp
 
-    def test_contains(self, session):
-        res = session.query(User).rql('contains(email,wired.com)').rql_all()
-        exp = session.query(User).filter(User.email.contains('wired.com')).all()
+    def test_contains_string(self, session):
+        res = session.query(User).rql('contains(email,besto.com)').rql_all()
+        exp = session.query(User).filter(User.email.contains('besto.com')).all()
         assert res
         assert res == exp
 
-    def test_excludes(self, session):
-        res = session.query(User).rql('excludes(email,wired.com)').rql_all()
-        exp = session.query(User).filter(not_(User.email.contains('wired.com'))).all()
+    def test_excludes_string(self, session):
+        res = session.query(User).rql('excludes(email,besto.com)').rql_all()
+        exp = session.query(User).filter(not_(User.email.contains('besto.com'))).all()
+        assert res
+        assert res == exp
+
+    def test_contains_array(self, session):
+        res = session.query(User).rql('contains(tags,aliqua)').rql_all()
+        exp = session.query(User).filter(User.tags.contains('aliqua')).all()
+        assert res
+        assert res == exp
+
+    def test_excludes_array(self, session):
+        res = session.query(User).rql('excludes(tags,aliqua)').rql_all()
+        exp = session.query(User).filter(not_(User.tags.contains('aliqua'))).all()
         assert res
         assert res == exp
 
@@ -69,24 +81,24 @@ class TestQuery:
         assert res == exp
 
     def test_sum(self, session):
-        res = session.query(User).rql('sum(distance)').rql_all()
-        exp = [session.query(func.sum(User.distance)).scalar()]
+        res = session.query(User).rql('sum(balance)').rql_all()
+        exp = [session.query(func.sum(User.balance)).scalar()]
         assert len(res) == 1
         assert res == exp
 
     def test_mean(self, session):
-        res = session.query(User).rql('mean(distance)').rql_all()
-        exp = session.query(func.avg(User.distance)).scalar()
+        res = session.query(User).rql('mean(balance)').rql_all()
+        exp = session.query(func.avg(User.balance)).scalar()
         assert res == exp
 
     def test_max(self, session):
-        res = session.query(User).rql('max(distance)').rql_all()
-        exp = session.query(func.max(User.distance)).scalar()
+        res = session.query(User).rql('max(balance)').rql_all()
+        exp = session.query(func.max(User.balance)).scalar()
         assert res == exp
 
     def test_min(self, session):
-        res = session.query(User).rql('min(distance)').rql_all()
-        exp = session.query(func.min(User.distance)).scalar()
+        res = session.query(User).rql('min(balance)').rql_all()
+        exp = session.query(func.min(User.balance)).scalar()
         assert res == exp
 
     def test_first(self, session):
@@ -108,10 +120,10 @@ class TestQuery:
     def test_eq_operator(self, session, user_id):
         res = session.query(User).rql('user_id={}'.format(user_id)).rql_all()
         assert res
-        assert session.query(User).get(user_id).username == res[0].username
+        assert session.query(User).get(user_id).name == res[0].name
 
-    @pytest.mark.parametrize('distance', (10, 20, 30))
-    def test_lt_operator(self, session, distance):
-        res = session.query(User).rql('lt(distance,{})'.format(distance))
+    @pytest.mark.parametrize('balance', (1000, 2000, 3000))
+    def test_gt_operator(self, session, balance):
+        res = session.query(User).rql('gt(balance,{})'.format(balance)).rql_all()
         assert res
-        assert all([u.distance < distance for u in res])
+        assert all([u.balance > balance for u in res])

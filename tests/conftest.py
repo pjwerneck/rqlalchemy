@@ -4,17 +4,18 @@ import json
 import os
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from fixtures import Base
 from fixtures import RQLQuery
+from fixtures import Tag
 from fixtures import User
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope='session')
 def engine():
-    return create_engine('sqlite:///:memory:', echo=False)
+    return create_engine('sqlite:///:memory:', echo=True)
 
 
 @pytest.yield_fixture(scope='session')
@@ -32,7 +33,22 @@ def session(engine):
         users = json.load(f)
 
         for raw in users:
-            obj = User(**raw)
+            obj = User(
+                user_id=raw['index'],
+                guid=raw['guid'],
+                name=raw['name'],
+                email=raw['email'],
+                gender=raw['gender'],
+                birthdate=raw['birthdate'],
+                registered=raw['registered'],
+                is_active=raw['isActive'],
+                street_address=raw['street_address'],
+                city=raw['city'],
+                state=raw['state'],
+                tags=raw['tags'],
+                balance=raw['balance'],
+            )
+
             localsession.add(obj)
 
     localsession.commit()

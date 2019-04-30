@@ -3,14 +3,17 @@
 import os
 import sys
 from datetime import datetime
-
-from rqlalchemy import RQLQueryMixIn
+from decimal import Decimal
 
 import sqlalchemy as sa
+from dateutil.parser import parse as parse_dt
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Query as BaseQuery
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
+from rqlalchemy import RQLQueryMixIn
 
 Base = declarative_base()
 
@@ -22,38 +25,54 @@ class RQLQuery(BaseQuery, RQLQueryMixIn):
 Base.query_class = RQLQuery
 
 
+class Tag(Base):
+    __tablename__ = 'tag'
+
+    tag_id = sa.Column(sa.Integer, primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'))
+
+    name = sa.Column(sa.String(30))
+
+
 class User(Base):
     __tablename__ = 'user'
 
     user_id = sa.Column(sa.Integer, primary_key=True)
-    full_name = sa.Column(sa.String(200))
-    username = sa.Column(sa.String(80), unique=True)
+    guid = sa.Column(sa.String(32), unique=True)
+    name = sa.Column(sa.String(200))
     email = sa.Column(sa.String(120), unique=True)
-    gender = sa.Column(sa.Enum('Male', 'Female'))
+    gender = sa.Column(sa.Enum('male', 'female'))
     birthdate = sa.Column(sa.Date)
-    last_seen = sa.Column(sa.DateTime)
-    distance = sa.Column(sa.Integer)
-    active = sa.Column(sa.Boolean)
-    city = sa.Column(sa.String(40))
+    registered = sa.Column(sa.DateTime)
+    is_active = sa.Column(sa.Boolean)
+    street_address = sa.Column(sa.String(200))
+    city = sa.Column(sa.String(50))
     state = sa.Column(sa.String(2))
+    balance = sa.Column(sa.Numeric(9, 2))
+
+    _tags = relationship('Tag')
+    tags = association_proxy('_tags', 'name', creator=lambda name: Tag(name=name))
 
     @validates('birthdate')
     def validate_birthdate(self, key, value):
-        return datetime.strptime(value, '%m/%d/%Y').date()
+        return datetime.strptime(value, '%Y-%m-%d').date()
 
-    @validates('last_seen')
-    def validate_last_seen(self, key, value):
-        return datetime.strptime(value, '%m/%d/%Y')
+    @validates('registered')
+    def validate_registered(self, key, value):
+        return parse_dt(value)
+
+    @validates('balance')
+    def validate_balance(self, key, value):
+        return Decimal(value.strip('$').replace(',', ''))
 
     def __iter__(self):
         yield 'user_id', self.user_id
-        yield 'full_name', self.full_name
-        yield 'username', self.username
+        yield 'guid', self.guid
+        yield 'name', self.name
         yield 'email', self.email
         yield 'gender', self.gender.lower()
         yield 'birthdate', self.birthdate.isoformat()
-        yield 'last_seen', self.last_seen.isoformat()
-        yield 'distance', self.distance
+        yield 'registered', self.registered.isoformat()
+        yield 'is_active', self.is_active
         yield 'active', self.active
-        yield 'city', self.city
-        yield 'state', self.state
+        yield 'address', self.address
