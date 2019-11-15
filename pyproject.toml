@@ -12,7 +12,7 @@ homepage = "https://github.com/pjwerneck/rqlalchemy"
 keywords = ['sqlachemy', 'sql', 'rql', 'querying', 'httpapi']
 
 [tool.poetry.dependencies]
-python = "^3.4"
+python = "^3.5"
 pyrql = "^0.4.3"
 sqlalchemy = "^1.2"
 
