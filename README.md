@@ -29,7 +29,8 @@ Base = declarative_base()
 
 # create the custom query class
 class RQLQuery(BaseQuery, RQLQueryMixIn):
-    pass
+    _rql_default_limit=10
+    _rql_max_limit = 100
 
 # assign the custom query class to the declarative base
 Base.query_class = RQLQuery
@@ -45,11 +46,14 @@ from flask import request
 @app.route('/users')
 def get_users_collection():
     qs = unquote(request.query_string.decode(request.charset))
-    query = session.query(User).rql(query_string, limit=10)
-    users = query.all()
+    query = session.query(User).rql(qs)
+    users = query.rql_all()
 
     return render_response(users)
 ```
+
+Since the mix-in class only adds extra methods, the original methods are unaffected. You can still retrieve results with the `all()` method, by iterating over the query, or you can add more querying conditions at will. However, if you want to support RQL expressions with aggregate functions or querying functions that result in a subset of columns, you must retrieve the results with `rql_all()`.
+
 
 
 ## Reference Table
