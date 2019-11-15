@@ -26,22 +26,22 @@ Base.query_class = RQLQuery
 
 
 class Tag(Base):
-    __tablename__ = 'tag'
+    __tablename__ = "tag"
 
     tag_id = sa.Column(sa.Integer, primary_key=True)
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'))
+    user_id = sa.Column(sa.Integer, sa.ForeignKey("user.user_id"))
 
     name = sa.Column(sa.String(30))
 
 
 class User(Base):
-    __tablename__ = 'user'
+    __tablename__ = "user"
 
     user_id = sa.Column(sa.Integer, primary_key=True)
     guid = sa.Column(sa.String(32), unique=True)
     name = sa.Column(sa.String(200))
     email = sa.Column(sa.String(120), unique=True)
-    gender = sa.Column(sa.Enum('male', 'female'))
+    gender = sa.Column(sa.Enum("male", "female"))
     birthdate = sa.Column(sa.Date)
     registered = sa.Column(sa.DateTime)
     is_active = sa.Column(sa.Boolean)
@@ -50,29 +50,29 @@ class User(Base):
     state = sa.Column(sa.String(2))
     balance = sa.Column(sa.Numeric(9, 2))
 
-    _tags = relationship('Tag')
-    tags = association_proxy('_tags', 'name', creator=lambda name: Tag(name=name))
+    _tags = relationship("Tag")
+    tags = association_proxy("_tags", "name", creator=lambda name: Tag(name=name))
 
-    @validates('birthdate')
+    @validates("birthdate")
     def validate_birthdate(self, key, value):
-        return datetime.strptime(value, '%Y-%m-%d').date()
+        return datetime.strptime(value, "%Y-%m-%d").date()
 
-    @validates('registered')
+    @validates("registered")
     def validate_registered(self, key, value):
         return parse_dt(value)
 
-    @validates('balance')
+    @validates("balance")
     def validate_balance(self, key, value):
-        return Decimal(value.strip('$').replace(',', ''))
+        return Decimal(value.strip("$").replace(",", ""))
 
     def __iter__(self):
-        yield 'user_id', self.user_id
-        yield 'guid', self.guid
-        yield 'name', self.name
-        yield 'email', self.email
-        yield 'gender', self.gender.lower()
-        yield 'birthdate', self.birthdate.isoformat()
-        yield 'registered', self.registered.isoformat()
-        yield 'is_active', self.is_active
-        yield 'active', self.active
-        yield 'address', self.address
+        yield "user_id", self.user_id
+        yield "guid", self.guid
+        yield "name", self.name
+        yield "email", self.email
+        yield "gender", self.gender.lower()
+        yield "birthdate", self.birthdate.isoformat()
+        yield "registered", self.registered.isoformat()
+        yield "is_active", self.is_active
+        yield "active", self.active
+        yield "address", self.address

@@ -31,7 +31,7 @@ class RQLQueryMixIn:
 
         if not expr:
             self.rql_parsed = None
-            self.rql_expr = ''
+            self.rql_expr = ""
 
         else:
             self.rql_expr = expr
@@ -78,10 +78,12 @@ class RQLQueryMixIn:
     def rql_expr_replace(self, replacement):
         parsed = deepcopy(self.rql_parsed)
 
-        replaced = self._rql_traverse_and_replace(parsed, replacement['name'], replacement['args'])
+        replaced = self._rql_traverse_and_replace(
+            parsed, replacement["name"], replacement["args"]
+        )
 
         if not replaced:
-            parsed = {'name': 'and', 'args': [replacement, parsed]}
+            parsed = {"name": "and", "args": [replacement, parsed]}
 
         return unparse(parsed)
 
@@ -89,12 +91,12 @@ class RQLQueryMixIn:
         if root is None:
             return False
 
-        if root['name'] == name:
-            root['args'] = args
+        if root["name"] == name:
+            root["args"] = args
             return True
 
         else:
-            for arg in root['args']:
+            for arg in root["args"]:
                 if isinstance(arg, dict):
                     if self._rql_traverse_and_replace(arg, name, args):
                         return True
@@ -107,14 +109,14 @@ class RQLQueryMixIn:
 
     def _rql_apply(self, node):
         if isinstance(node, dict):
-            name = node['name']
-            args = node['args']
+            name = node["name"]
+            args = node["args"]
 
-            if name in {'eq', 'ne', 'lt', 'le', 'gt', 'ge'}:
+            if name in {"eq", "ne", "lt", "le", "gt", "ge"}:
                 return self._rql_cmp(args, getattr(operator, name))
 
             try:
-                method = getattr(self, '_rql_' + name)
+                method = getattr(self, "_rql_" + name)
             except AttributeError:
                 raise self._rql_error_cls("Invalid query function: %s" % name)
 
@@ -197,7 +199,7 @@ class RQLQueryMixIn:
 
         attr = self._rql_attr(attr)
         value = self._rql_value(value, attr)
-        value = value.replace('*', '%')
+        value = value.replace("*", "%")
 
         return attr.like(value)
 
@@ -212,10 +214,10 @@ class RQLQueryMixIn:
             self._rql_offset_clause = args[1]
 
     def _rql_sort(self, args):
-        args = [('+', v) if isinstance(v, str) else v for v in args]
+        args = [("+", v) if isinstance(v, str) else v for v in args]
         args = [(p, self._rql_attr(v)) for (p, v) in args]
 
-        attrs = [attr.desc() if p == '-' else attr for (p, attr) in args]
+        attrs = [attr.desc() if p == "-" else attr for (p, attr) in args]
 
         self._rql_order_by_clause = attrs
 
