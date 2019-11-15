@@ -20,8 +20,15 @@ class RQLQueryError(Exception):
 
 
 class RQLQueryMixIn:
+    """Query mix-in class with RQL functions
+
+    """
 
     _rql_error_cls = RQLQueryError
+
+    _rql_max_limit = None
+    _rql_default_limit = None
+    _rql_auto_scalar = False
 
     def rql(self, query, limit=None):
         if len(self._entities) > 1:
@@ -63,12 +70,15 @@ class RQLQueryMixIn:
         if self._rql_order_by_clause is not None:
             query = query.order_by(*self._rql_order_by_clause)
 
+        # limit priority is: default, method parameter, querystring parameter
+        if self._rql_default_limit:
+            query = query.limit(self._rql_default_limit)
+
+        if limit is not None:
+            query = query.limit(limit)
+
         if self._rql_limit_clause is not None:
             query = query.limit(self._rql_limit_clause)
-
-        else:
-            if limit:
-                query = query.limit(limit)
 
         if self._rql_offset_clause is not None:
             query = query.offset(self._rql_offset_clause)
@@ -76,6 +86,12 @@ class RQLQueryMixIn:
         return query
 
     def rql_expr_replace(self, replacement):
+        """Replace any nodes matching the replacement name
+
+        This can be used to generate an expression with modified
+        `limit` and `offset` nodes, for pagination purposes.
+
+        """
         parsed = deepcopy(self.rql_parsed)
 
         replaced = self._rql_traverse_and_replace(
@@ -104,6 +120,8 @@ class RQLQueryMixIn:
         return False
 
     def _rql_walk(self, node):
+        # filtering nodes will be used by the where clause. Other
+        # nodes will be saved separately by the visitor methods below
         if node:
             self._rql_where_clause = self._rql_apply(node)
 
@@ -206,15 +224,15 @@ class RQLQueryMixIn:
     def _rql_limit(self, args):
         args = [self._rql_value(v) for v in args]
 
-        if len(args) == 1:
-            self._rql_limit_clause = args[0]
+        self._rql_limit_clause = min(args[0], self._rql_max_limit or float("inf"))
 
-        elif len(args) == 2:
-            self._rql_limit_clause = args[0]
+        if len(args) == 2:
             self._rql_offset_clause = args[1]
 
     def _rql_sort(self, args):
+        # normalize sort args with '+'
         args = [("+", v) if isinstance(v, str) else v for v in args]
+        # pair signals with attributes
         args = [(p, self._rql_attr(v)) for (p, v) in args]
 
         attrs = [attr.desc() if p == "-" else attr for (p, attr) in args]
