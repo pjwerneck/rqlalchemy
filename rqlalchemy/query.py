@@ -311,3 +311,38 @@ class RQLQueryMixIn:
             return [row._asdict() for row in query]
 
         return self.all()
+
+    def rql_paginate(self):
+        limit = self._limit
+        offset = self._offset or 0
+        total = 0
+
+        if limit is None:
+            raise RQLQueryError("Pagination requires a limit value")
+
+        # build a bare query copy to calculate totals
+        _total_query = self.limit(None).offset(None).order_by(None)
+        # then replace the select clause with count(*) and get the first value
+        total = self.session.execute(
+            _total_query.statement.with_only_columns([func.count()])
+        ).scalar()
+
+        page = self.rql_all()
+
+        if offset + limit < total:
+            expr = self.rql_expr_replace(
+                {"name": "limit", "args": [limit, offset + limit]}
+            )
+            next_page = expr
+        else:
+            next_page = None
+
+        if offset > 0 and total:
+            expr = self.rql_expr_replace(
+                {"name": "limit", "args": [limit, offset - limit]}
+            )
+            previous_page = expr
+        else:
+            previous_page = None
+
+        return page, previous_page, next_page, total
