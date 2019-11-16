@@ -1,5 +1,7 @@
 # RQLAlchemy
 
+[![Build Status](https://travis-ci.org/pjwerneck/rqlalchemy.svg?branch=develop)](https://travis-ci.org/pjwerneck/rqlalchemy)
+
 Resource Query Language extension for SQLAlchemy
 
 ## Overview
