@@ -58,6 +58,7 @@ class RQLQueryMixIn:
         self._rql_offset_clause = None
         self._rql_one_clause = None
         self._rql_distinct_clause = None
+        self._rql_group_by_clause = None
         self._rql_joins = []
 
         self._rql_walk(self.rql_parsed)
@@ -310,6 +311,24 @@ class RQLQueryMixIn:
     def _rql_dt(self, args):
         return datetime.datetime(*args)
 
+    def _rql_aggregate(self, args):
+        attrs = []
+        aggrs = []
+
+        for x in args:
+            if isinstance(x, dict):
+                agg_label = x["args"][0]
+                agg_func = getattr(func, x["name"])
+                agg_attr = self._rql_attr(x["args"][0])
+
+                aggrs.append(agg_func(agg_attr).label(agg_label))
+
+            else:
+                attrs.append(self._rql_attr(x))
+
+        self._rql_group_by_clause = attrs
+        self._rql_select_clause = attrs + aggrs
+
     def rql_all(self):
 
         if self._rql_scalar_clause is not None:
@@ -332,6 +351,10 @@ class RQLQueryMixIn:
 
         if self._rql_select_clause:
             query = self.from_self(*self._rql_select_clause)
+
+            if self._rql_group_by_clause:
+                query = query.group_by(*self._rql_group_by_clause)
+
             if self._rql_distinct_clause is not None:
                 query = query.distinct()
 

@@ -5,6 +5,10 @@ from sqlalchemy import not_
 from fixtures import User
 
 
+def to_dict(it):
+    return [row._asdict() for row in it]
+
+
 class TestQuery:
     def test_simple_sort(self, session):
         res = session.query(User).rql("sort(balance)").rql_all()
@@ -72,7 +76,7 @@ class TestQuery:
 
     def test_select(self, session):
         rql_res = session.query(User).rql("select(user_id,state)").rql_all()
-        res = [row._asdict() for row in session.query(User.user_id, User.state)]
+        res = to_dict(session.query(User.user_id, User.state))
         assert res
         assert rql_res == res
 
@@ -111,15 +115,23 @@ class TestQuery:
         assert res == exp
 
     def test_one(self, session):
-        res = session.query(User).rql("guid=658c407c-6c19-470e-9aa6-8c2b86cddb4b&one()").rql_all()
-        exp = [session.query(User).filter(User.guid == '658c407c-6c19-470e-9aa6-8c2b86cddb4b').one()]
+        res = (
+            session.query(User)
+            .rql("guid=658c407c-6c19-470e-9aa6-8c2b86cddb4b&one()")
+            .rql_all()
+        )
+        exp = [
+            session.query(User)
+            .filter(User.guid == "658c407c-6c19-470e-9aa6-8c2b86cddb4b")
+            .one()
+        ]
 
         assert len(res) == 1
         assert res == exp
 
     def test_distinct(self, session):
         res = session.query(User).rql("select(gender)&distinct()").rql_all()
-        exp = [row._asdict() for row in session.query(User.gender).distinct()]
+        exp = to_dict(session.query(User.gender).distinct())
 
         assert len(res) == 2
         assert res == exp
@@ -140,3 +152,30 @@ class TestQuery:
         res = session.query(User).rql("gt(balance,{})".format(balance)).rql_all()
         assert res
         assert all([u.balance > balance for u in res])
+
+    def test_aggregate(self, session):
+        res = session.query(User).rql("aggregate(state,sum(balance))").rql_all()
+        exp = to_dict(
+            session.query(User.state, func.sum(User.balance).label("balance"))
+            .group_by(User.state)
+            .all()
+        )
+
+        assert res
+        assert res == exp
+
+    def test_aggregate_with_filter(self, session):
+        res = (
+            session.query(User)
+            .rql("aggregate(state,sum(balance))&is_active=true")
+            .rql_all()
+        )
+        exp = to_dict(
+            session.query(User.state, func.sum(User.balance).label("balance"))
+            .filter(User.is_active == True)
+            .group_by(User.state)
+            .all()
+        )
+
+        assert res
+        assert res == exp
