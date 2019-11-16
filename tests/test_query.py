@@ -110,13 +110,24 @@ class TestQuery:
         assert len(res) == 1
         assert res == exp
 
+    def test_one(self, session):
+        res = session.query(User).rql("guid=658c407c-6c19-470e-9aa6-8c2b86cddb4b&one()").rql_all()
+        exp = [session.query(User).filter(User.guid == '658c407c-6c19-470e-9aa6-8c2b86cddb4b').one()]
+
+        assert len(res) == 1
+        assert res == exp
+
+    def test_distinct(self, session):
+        res = session.query(User).rql("select(gender)&distinct()").rql_all()
+        exp = [row._asdict() for row in session.query(User.gender).distinct()]
+
+        assert len(res) == 2
+        assert res == exp
+
     def test_count(self, session):
         res = session.query(User).rql("count()").rql_all()
         exp = session.query(User).count()
         assert res == exp
-
-    def test_distinct(self, session):
-        pass
 
     @pytest.mark.parametrize("user_id", (1, 2, 3))
     def test_eq_operator(self, session, user_id):

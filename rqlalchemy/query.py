@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 
 class RQLQueryError(Exception):
@@ -55,6 +56,8 @@ class RQLQueryMixIn:
         self._rql_order_by_clause = None
         self._rql_limit_clause = None
         self._rql_offset_clause = None
+        self._rql_one_clause = None
+        self._rql_distinct_clause = None
         self._rql_joins = []
 
         self._rql_walk(self.rql_parsed)
@@ -82,6 +85,9 @@ class RQLQueryMixIn:
 
         if self._rql_offset_clause is not None:
             query = query.offset(self._rql_offset_clause)
+
+        if self._rql_distinct_clause is not None:
+            query = query.distinct()
 
         return query
 
@@ -262,6 +268,9 @@ class RQLQueryMixIn:
         attr = self._rql_attr(attr)
         self._rql_values_clause = attr
 
+    def _rql_distinct(self, args):
+        self._rql_distinct_clause = True
+
     def _rql_sum(self, args):
         (attr,) = args
         attr = self._rql_attr(attr)
@@ -288,6 +297,10 @@ class RQLQueryMixIn:
     def _rql_first(self, args):
         self._rql_limit_clause = 1
 
+    def _rql_one(self, args):
+        self._rql_limit_clause = 1
+        self._rql_one_clause = True
+
     def _rql_time(self, args):
         return datetime.time(*args)
 
@@ -302,12 +315,26 @@ class RQLQueryMixIn:
         if self._rql_scalar_clause is not None:
             return self.from_self(self._rql_scalar_clause).scalar()
 
+        if self._rql_one_clause is not None:
+            try:
+                return [self.one()]
+            except NoResultFound:
+                raise RQLQueryError("No result found for one()")
+            except MultipleResultsFound:
+                raise RQLQueryError("Multiple results found for one()")
+
         if self._rql_values_clause is not None:
             query = self.from_self(self._rql_values_clause)
+            if self._rql_distinct_clause is not None:
+                query = query.distinct()
+
             return [row[0] for row in query]
 
         if self._rql_select_clause:
             query = self.from_self(*self._rql_select_clause)
+            if self._rql_distinct_clause is not None:
+                query = query.distinct()
+
             return [row._asdict() for row in query]
 
         return self.all()
