@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-from rqlalchemy.query import RQLQueryMixIn
+from rqlalchemy.query import RQLQueryMixIn, RQLQueryError
 
 
-__title__ = 'rqlalchemy'
-__version__ = '0.3.0'
-__author__ = 'Pedro Werneck'
-__license__ = 'MIT'
+__title__ = "rqlalchemy"
+__version__ = "0.4.0"
+__author__ = "Pedro Werneck"
+__license__ = "MIT"
 
 
-__all__ = ['RQLQueryMixIn']
+__all__ = ["RQLQueryMixIn", "RQLQueryError"]

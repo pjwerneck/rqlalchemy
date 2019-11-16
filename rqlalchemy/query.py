@@ -13,6 +13,7 @@ from sqlalchemy import func
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 
 class RQLQueryError(Exception):
@@ -20,8 +21,15 @@ class RQLQueryError(Exception):
 
 
 class RQLQueryMixIn:
+    """Query mix-in class with RQL functions
+
+    """
 
     _rql_error_cls = RQLQueryError
+
+    _rql_max_limit = None
+    _rql_default_limit = None
+    _rql_auto_scalar = False
 
     def rql(self, query, limit=None):
         if len(self._entities) > 1:
@@ -31,7 +39,7 @@ class RQLQueryMixIn:
 
         if not expr:
             self.rql_parsed = None
-            self.rql_expr = ''
+            self.rql_expr = ""
 
         else:
             self.rql_expr = expr
@@ -48,6 +56,9 @@ class RQLQueryMixIn:
         self._rql_order_by_clause = None
         self._rql_limit_clause = None
         self._rql_offset_clause = None
+        self._rql_one_clause = None
+        self._rql_distinct_clause = None
+        self._rql_group_by_clause = None
         self._rql_joins = []
 
         self._rql_walk(self.rql_parsed)
@@ -63,25 +74,39 @@ class RQLQueryMixIn:
         if self._rql_order_by_clause is not None:
             query = query.order_by(*self._rql_order_by_clause)
 
+        # limit priority is: default, method parameter, querystring parameter
+        if self._rql_default_limit:
+            query = query.limit(self._rql_default_limit)
+
+        if limit is not None:
+            query = query.limit(limit)
+
         if self._rql_limit_clause is not None:
             query = query.limit(self._rql_limit_clause)
-
-        else:
-            if limit:
-                query = query.limit(limit)
 
         if self._rql_offset_clause is not None:
             query = query.offset(self._rql_offset_clause)
 
+        if self._rql_distinct_clause is not None:
+            query = query.distinct()
+
         return query
 
     def rql_expr_replace(self, replacement):
+        """Replace any nodes matching the replacement name
+
+        This can be used to generate an expression with modified
+        `limit` and `offset` nodes, for pagination purposes.
+
+        """
         parsed = deepcopy(self.rql_parsed)
 
-        replaced = self._rql_traverse_and_replace(parsed, replacement['name'], replacement['args'])
+        replaced = self._rql_traverse_and_replace(
+            parsed, replacement["name"], replacement["args"]
+        )
 
         if not replaced:
-            parsed = {'name': 'and', 'args': [replacement, parsed]}
+            parsed = {"name": "and", "args": [replacement, parsed]}
 
         return unparse(parsed)
 
@@ -89,12 +114,12 @@ class RQLQueryMixIn:
         if root is None:
             return False
 
-        if root['name'] == name:
-            root['args'] = args
+        if root["name"] == name:
+            root["args"] = args
             return True
 
         else:
-            for arg in root['args']:
+            for arg in root["args"]:
                 if isinstance(arg, dict):
                     if self._rql_traverse_and_replace(arg, name, args):
                         return True
@@ -102,19 +127,21 @@ class RQLQueryMixIn:
         return False
 
     def _rql_walk(self, node):
+        # filtering nodes will be used by the where clause. Other
+        # nodes will be saved separately by the visitor methods below
         if node:
             self._rql_where_clause = self._rql_apply(node)
 
     def _rql_apply(self, node):
         if isinstance(node, dict):
-            name = node['name']
-            args = node['args']
+            name = node["name"]
+            args = node["args"]
 
-            if name in {'eq', 'ne', 'lt', 'le', 'gt', 'ge'}:
+            if name in {"eq", "ne", "lt", "le", "gt", "ge"}:
                 return self._rql_cmp(args, getattr(operator, name))
 
             try:
-                method = getattr(self, '_rql_' + name)
+                method = getattr(self, "_rql_" + name)
             except AttributeError:
                 raise self._rql_error_cls("Invalid query function: %s" % name)
 
@@ -197,25 +224,25 @@ class RQLQueryMixIn:
 
         attr = self._rql_attr(attr)
         value = self._rql_value(value, attr)
-        value = value.replace('*', '%')
+        value = value.replace("*", "%")
 
         return attr.like(value)
 
     def _rql_limit(self, args):
         args = [self._rql_value(v) for v in args]
 
-        if len(args) == 1:
-            self._rql_limit_clause = args[0]
+        self._rql_limit_clause = min(args[0], self._rql_max_limit or float("inf"))
 
-        elif len(args) == 2:
-            self._rql_limit_clause = args[0]
+        if len(args) == 2:
             self._rql_offset_clause = args[1]
 
     def _rql_sort(self, args):
-        args = [('+', v) if isinstance(v, str) else v for v in args]
+        # normalize sort args with '+'
+        args = [("+", v) if isinstance(v, str) else v for v in args]
+        # pair signals with attributes
         args = [(p, self._rql_attr(v)) for (p, v) in args]
 
-        attrs = [attr.desc() if p == '-' else attr for (p, attr) in args]
+        attrs = [attr.desc() if p == "-" else attr for (p, attr) in args]
 
         self._rql_order_by_clause = attrs
 
@@ -241,6 +268,9 @@ class RQLQueryMixIn:
         (attr,) = args
         attr = self._rql_attr(attr)
         self._rql_values_clause = attr
+
+    def _rql_distinct(self, args):
+        self._rql_distinct_clause = True
 
     def _rql_sum(self, args):
         (attr,) = args
@@ -268,6 +298,10 @@ class RQLQueryMixIn:
     def _rql_first(self, args):
         self._rql_limit_clause = 1
 
+    def _rql_one(self, args):
+        self._rql_limit_clause = 1
+        self._rql_one_clause = True
+
     def _rql_time(self, args):
         return datetime.time(*args)
 
@@ -277,17 +311,88 @@ class RQLQueryMixIn:
     def _rql_dt(self, args):
         return datetime.datetime(*args)
 
+    def _rql_aggregate(self, args):
+        attrs = []
+        aggrs = []
+
+        for x in args:
+            if isinstance(x, dict):
+                agg_label = x["args"][0]
+                agg_func = getattr(func, x["name"])
+                agg_attr = self._rql_attr(x["args"][0])
+
+                aggrs.append(agg_func(agg_attr).label(agg_label))
+
+            else:
+                attrs.append(self._rql_attr(x))
+
+        self._rql_group_by_clause = attrs
+        self._rql_select_clause = attrs + aggrs
+
     def rql_all(self):
 
         if self._rql_scalar_clause is not None:
             return self.from_self(self._rql_scalar_clause).scalar()
 
+        if self._rql_one_clause is not None:
+            try:
+                return [self.one()]
+            except NoResultFound:
+                raise RQLQueryError("No result found for one()")
+            except MultipleResultsFound:
+                raise RQLQueryError("Multiple results found for one()")
+
         if self._rql_values_clause is not None:
             query = self.from_self(self._rql_values_clause)
+            if self._rql_distinct_clause is not None:
+                query = query.distinct()
+
             return [row[0] for row in query]
 
         if self._rql_select_clause:
             query = self.from_self(*self._rql_select_clause)
+
+            if self._rql_group_by_clause:
+                query = query.group_by(*self._rql_group_by_clause)
+
+            if self._rql_distinct_clause is not None:
+                query = query.distinct()
+
             return [row._asdict() for row in query]
 
         return self.all()
+
+    def rql_paginate(self):
+        limit = self._limit
+        offset = self._offset or 0
+        total = 0
+
+        if limit is None:
+            raise RQLQueryError("Pagination requires a limit value")
+
+        # build a bare query copy to calculate totals
+        _total_query = self.limit(None).offset(None).order_by(None)
+        # then replace the select clause with count(*) and get the first value
+        total = self.session.execute(
+            _total_query.statement.with_only_columns([func.count()])
+        ).scalar()
+
+        page = self.rql_all()
+
+        if offset + limit < total:
+            expr = self.rql_expr_replace(
+                {"name": "limit", "args": [limit, offset + limit]}
+            )
+            next_page = expr
+        else:
+            next_page = None
+
+        if offset > 0 and total:
+            expr = self.rql_expr_replace(
+                {"name": "limit", "args": [limit, offset - limit]}
+            )
+            previous_page = expr
+        else:
+            previous_page = None
+
+        return page, previous_page, next_page, total
