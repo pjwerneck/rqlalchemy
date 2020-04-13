@@ -13,7 +13,7 @@ keywords = ['sqlachemy', 'sql', 'rql', 'querying', 'httpapi']
 
 [tool.poetry.dependencies]
 python = "^3.5"
-pyrql = "^0.4.3"
+pyrql = "^0.6.0"
 sqlalchemy = "^1.2"
 
 [tool.poetry.dev-dependencies]
