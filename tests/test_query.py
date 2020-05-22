@@ -156,8 +156,19 @@ class TestQuery:
     def test_aggregate(self, session):
         res = session.query(User).rql("aggregate(state,sum(balance))").rql_all()
         exp = to_dict(
-            session.query(User.state, func.sum(User.balance).label("balance"))
+            session.query(User.state, func.sum(User.balance).label("sum"))
             .group_by(User.state)
+            .all()
+        )
+
+        assert res
+        assert res == exp
+
+    def test_aggregate_count(self, session):
+        res = session.query(User).rql("aggregate(gender,count(user_id))").rql_all()
+        exp = to_dict(
+            session.query(User.gender, func.count(User.user_id).label("count"))
+            .group_by(User.gender)
             .all()
         )
 
@@ -171,7 +182,7 @@ class TestQuery:
             .rql_all()
         )
         exp = to_dict(
-            session.query(User.state, func.sum(User.balance).label("balance"))
+            session.query(User.state, func.sum(User.balance).label("sum"))
             .filter(User.is_active == True)
             .group_by(User.state)
             .all()

@@ -317,7 +317,7 @@ class RQLQueryMixIn:
 
         for x in args:
             if isinstance(x, dict):
-                agg_label = x["args"][0]
+                agg_label = x["name"]
                 agg_func = getattr(func, x["name"])
                 agg_attr = self._rql_attr(x["args"][0])
 
