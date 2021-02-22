@@ -299,7 +299,6 @@ class RQLQueryMixIn:
         self._rql_limit_clause = 1
 
     def _rql_one(self, args):
-        self._rql_limit_clause = 1
         self._rql_one_clause = True
 
     def _rql_time(self, args):
