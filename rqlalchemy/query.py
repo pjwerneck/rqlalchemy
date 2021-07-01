@@ -5,6 +5,7 @@ import operator
 from copy import deepcopy
 from functools import reduce
 
+import sqlalchemy
 from pyrql import RQLSyntaxError
 from pyrql import parse
 from pyrql import unparse
@@ -13,7 +14,10 @@ from sqlalchemy import func
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
+
+SQLALCHEMY_VERSION = tuple(int(v) for v in sqlalchemy.__version__.split("."))
 
 
 class RQLQueryError(Exception):
@@ -31,8 +35,32 @@ class RQLQueryMixIn:
     _rql_default_limit = None
     _rql_auto_scalar = False
 
+    # properties added for compatibility with sqlalchemy < 1.4
+    @property
+    def _rql_compat_entities(self):
+        if SQLALCHEMY_VERSION < (1, 4, 0):
+            return [e.type for e in self._entities]
+        else:
+            return [t._annotations["parententity"].entity for t in self._raw_columns]
+
+    @property
+    def _rql_compat_limit(self):
+        if SQLALCHEMY_VERSION < (1, 4, 0):
+            return self._limit
+        else:
+            return self._limit_clause.value if self._limit_clause is not None else None
+
+    @property
+    def _rql_compat_offset(self):
+        if SQLALCHEMY_VERSION < (1, 4, 0):
+            return self._offset
+        else:
+            return (
+                self._offset_clause.value if self._offset_clause is not None else None
+            )
+
     def rql(self, query, limit=None):
-        if len(self._entities) > 1:
+        if len(self._rql_compat_entities) > 1:
             raise NotImplementedError("Query must have a single entity")
 
         expr = query
@@ -156,7 +184,8 @@ class RQLQueryMixIn:
         return node
 
     def _rql_attr(self, attr):
-        model = self._entities[0].type
+        model = self._rql_compat_entities[0]
+
         if isinstance(attr, str):
             try:
                 return getattr(model, attr)
@@ -362,8 +391,8 @@ class RQLQueryMixIn:
         return self.all()
 
     def rql_paginate(self):
-        limit = self._limit
-        offset = self._offset or 0
+        limit = self._rql_compat_limit
+        offset = self._rql_compat_offset or 0
         total = 0
 
         if limit is None:
@@ -372,9 +401,7 @@ class RQLQueryMixIn:
         # build a bare query copy to calculate totals
         _total_query = self.limit(None).offset(None).order_by(None)
         # then replace the select clause with count(*) and get the first value
-        total = self.session.execute(
-            _total_query.statement.with_only_columns([func.count()])
-        ).scalar()
+        total = _total_query.count()
 
         page = self.rql_all()
 
