@@ -3,6 +3,7 @@ from sqlalchemy import func
 from sqlalchemy import not_
 
 from fixtures import User
+from rqlalchemy import RQLQueryError
 
 
 def to_dict(it):
@@ -129,6 +130,16 @@ class TestQuery:
         assert len(res) == 1
         assert res == exp
 
+    def test_one_no_results_found(self, session):
+        with pytest.raises(RQLQueryError) as exc:
+            session.query(User).rql("guid=lero&one()").rql_all()
+        assert exc.value.args[0] == "No result found for one()"
+
+    def test_one_multiple_results_found(self, session):
+        with pytest.raises(RQLQueryError) as exc:
+            session.query(User).rql("state=FL&one()").rql_all()
+        assert exc.value.args[0] == "Multiple results found for one()"
+
     def test_distinct(self, session):
         res = session.query(User).rql("select(gender)&distinct()").rql_all()
         exp = to_dict(session.query(User.gender).distinct())
@@ -156,8 +167,19 @@ class TestQuery:
     def test_aggregate(self, session):
         res = session.query(User).rql("aggregate(state,sum(balance))").rql_all()
         exp = to_dict(
-            session.query(User.state, func.sum(User.balance).label("balance"))
+            session.query(User.state, func.sum(User.balance).label("sum"))
             .group_by(User.state)
+            .all()
+        )
+
+        assert res
+        assert res == exp
+
+    def test_aggregate_count(self, session):
+        res = session.query(User).rql("aggregate(gender,count(user_id))").rql_all()
+        exp = to_dict(
+            session.query(User.gender, func.count(User.user_id).label("count"))
+            .group_by(User.gender)
             .all()
         )
 
@@ -171,7 +193,7 @@ class TestQuery:
             .rql_all()
         )
         exp = to_dict(
-            session.query(User.state, func.sum(User.balance).label("balance"))
+            session.query(User.state, func.sum(User.balance).label("sum"))
             .filter(User.is_active == True)
             .group_by(User.state)
             .all()

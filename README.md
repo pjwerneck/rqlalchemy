@@ -21,6 +21,7 @@ pip install rqlalchemy
 RQL queries can be supported by an application using SQLAlchemy by adding the `rqlalchemy.RQLQueryMixIn` class as a mix-in class to your base `Query` class:
 
 ```python
+from sqlalchemy import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Query as BaseQuery
 
@@ -34,8 +35,16 @@ class RQLQuery(BaseQuery, RQLQueryMixIn):
     _rql_default_limit = 10
     _rql_max_limit = 100
 
-# assign the custom query class to the declarative base
-Base.query_class = RQLQuery
+# pass the custom query class as a keyworkd argument to the sessionmaker
+session = sessionmaker(bind=engine, query_cls=RQLQuery)
+```
+
+If you're using Flask-SQLAlchemy, you can pass it as a session option:
+
+```
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy(session_options={"query_cls": RQLQuery})
+
 ```
 
 With that in place, you can perform RQL queries by passing the querystring to the query `rql()` method. For example, if you have a Flask HTTP API with an users collection endpoint querying your `User` model:

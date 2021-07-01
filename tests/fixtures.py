@@ -22,9 +22,6 @@ class RQLQuery(BaseQuery, RQLQueryMixIn):
     pass
 
 
-Base.query_class = RQLQuery
-
-
 class Tag(Base):
     __tablename__ = "tag"
 
