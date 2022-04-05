@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import func
 from sqlalchemy import not_
 
-from fixtures import User
+from fixtures import User, Blog, Post
 from rqlalchemy import RQLQueryError
 
 
@@ -200,4 +200,31 @@ class TestQuery:
         )
 
         assert res
+        assert res == exp
+
+    def test_like_with_relationship_1_deep(self, session, blogs):
+        res = (
+            session.query(User)
+            .rql('like((blogs, title), *1*)')
+            .rql_all()
+        )
+        exp = (
+            session.query(User).join(Blog)
+            .filter(Blog.title.like('%1%'))
+            .all()
+        )
+        assert res == exp
+
+
+    def test_like_with_relationship_2_deep(self, session, posts):
+        res = (
+            session.query(User)
+            .rql('like((blogs, posts, title), *Post 1*)')
+            .rql_all()
+        )
+        exp = (
+            session.query(User).join(Blog).join(Post)
+            .filter(Post.title.like('%Post 1%'))
+            .all()
+        )
         assert res == exp

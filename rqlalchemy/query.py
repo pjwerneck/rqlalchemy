@@ -192,17 +192,18 @@ class RQLQueryMixIn:
             except AttributeError:
                 raise self._rql_error_cls("Invalid query attribute: %s" % attr)
 
-        elif isinstance(attr, tuple) and len(attr) == 2:
-            relationships = inspect(model).relationships.keys()
-
-            if attr[0] in relationships:
-                rel = getattr(model, attr[0])
-                submodel = rel.mapper.class_
-
-                column = getattr(submodel, attr[1])
-                self._rql_joins.append(rel)
-
-                return column
+        elif isinstance(attr, tuple):
+            # Every entry in attr but the last should be a relationship name.
+            for name in attr[:-1]:
+                if name in inspect(model).relationships:
+                    rel = getattr(model, name)
+                    self._rql_joins.append(rel)
+                    model = rel.mapper.class_
+                else:
+                    raise AttributeError(f'{model} has no relationship "{name}"')
+            # Get the column from the last entry in attr.
+            column = getattr(model, attr[-1])
+            return column
 
         raise NotImplementedError
 

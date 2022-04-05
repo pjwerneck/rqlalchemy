@@ -4,6 +4,9 @@ import json
 import os
 
 import pytest
+from rqlalchemy.query import (
+    SQLALCHEMY_VERSION,
+)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -11,6 +14,10 @@ from fixtures import Base
 from fixtures import RQLQuery
 from fixtures import Tag
 from fixtures import User
+from fixtures import (
+    Blog,
+    Post,
+)
 
 
 @pytest.fixture(scope="session")
@@ -56,3 +63,35 @@ def session(engine):
     yield session_()
 
     Base.metadata.drop_all(engine)
+
+
+@pytest.fixture(scope='session')
+def blogs(session):
+    blogs = []
+    for uid in range(3):
+        if SQLALCHEMY_VERSION < (1, 4, 0):
+            user = session.query(User).get(uid)
+        else:
+            user = session.get(User, uid)
+        for blog_no in range(3):
+            blog = Blog(title=f'Blog {blog_no} for {user.name}', user=user)
+            blogs.append(blog)
+            session.add(blog)
+    session.commit()
+    yield(blogs)
+
+
+@pytest.fixture(scope='session')
+def posts(blogs, session):
+    posts = []
+    for blog in blogs:
+        # Skip all those belonging to user 3 so that we have some blogs with
+        # posts and some without.
+        if blog.user.user_id == 2:
+            continue
+        for post_no in range(3):
+            post = Post(title=f'Post {post_no} of blog "{blog.title}"', blog=blog)
+            session.add(post)
+            posts.append(post)
+    session.commit()
+    yield(posts)
