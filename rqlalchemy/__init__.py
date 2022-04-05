@@ -5,7 +5,7 @@ from rqlalchemy.query import RQLQueryMixIn, RQLQueryError
 
 
 __title__ = "rqlalchemy"
-__version__ = "0.4.4"
+__version__ = "0.4.5"
 __author__ = "Pedro Werneck"
 __license__ = "MIT"
 
