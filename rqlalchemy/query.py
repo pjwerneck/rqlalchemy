@@ -25,9 +25,7 @@ class RQLQueryError(Exception):
 
 
 class RQLQueryMixIn:
-    """Query mix-in class with RQL functions
-
-    """
+    """Query mix-in class with RQL functions"""
 
     _rql_error_cls = RQLQueryError
 
@@ -55,9 +53,7 @@ class RQLQueryMixIn:
         if SQLALCHEMY_VERSION < (1, 4, 0):
             return self._offset
         else:
-            return (
-                self._offset_clause.value if self._offset_clause is not None else None
-            )
+            return self._offset_clause.value if self._offset_clause is not None else None
 
     def rql(self, query, limit=None):
         if len(self._rql_compat_entities) > 1:
@@ -129,9 +125,7 @@ class RQLQueryMixIn:
         """
         parsed = deepcopy(self.rql_parsed)
 
-        replaced = self._rql_traverse_and_replace(
-            parsed, replacement["name"], replacement["args"]
-        )
+        replaced = self._rql_traverse_and_replace(parsed, replacement["name"], replacement["args"])
 
         if not replaced:
             parsed = {"name": "and", "args": [replacement, parsed]}
@@ -407,17 +401,13 @@ class RQLQueryMixIn:
         page = self.rql_all()
 
         if offset + limit < total:
-            expr = self.rql_expr_replace(
-                {"name": "limit", "args": [limit, offset + limit]}
-            )
+            expr = self.rql_expr_replace({"name": "limit", "args": [limit, offset + limit]})
             next_page = expr
         else:
             next_page = None
 
         if offset > 0 and total:
-            expr = self.rql_expr_replace(
-                {"name": "limit", "args": [limit, offset - limit]}
-            )
+            expr = self.rql_expr_replace({"name": "limit", "args": [limit, offset - limit]})
             previous_page = expr
         else:
             previous_page = None

@@ -4,20 +4,16 @@ import json
 import os
 
 import pytest
-from rqlalchemy.query import (
-    SQLALCHEMY_VERSION,
-)
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from fixtures import Base
+from fixtures import Blog
+from fixtures import Post
 from fixtures import RQLQuery
 from fixtures import Tag
 from fixtures import User
-from fixtures import (
-    Blog,
-    Post,
-)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from rqlalchemy.query import SQLALCHEMY_VERSION
 
 
 @pytest.fixture(scope="session")
@@ -25,7 +21,7 @@ def engine():
     return create_engine("sqlite:///:memory:", echo=True)
 
 
-@pytest.yield_fixture(scope="session")
+@pytest.fixture(scope="session")
 def session(engine):
 
     Base.metadata.create_all(engine)
@@ -65,7 +61,7 @@ def session(engine):
     Base.metadata.drop_all(engine)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def blogs(session):
     blogs = []
     for uid in range(3):
@@ -74,14 +70,14 @@ def blogs(session):
         else:
             user = session.get(User, uid)
         for blog_no in range(3):
-            blog = Blog(title=f'Blog {blog_no} for {user.name}', user=user)
+            blog = Blog(title=f"Blog {blog_no} for {user.name}", user=user)
             blogs.append(blog)
             session.add(blog)
     session.commit()
-    yield(blogs)
+    yield (blogs)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def posts(blogs, session):
     posts = []
     for blog in blogs:
@@ -94,4 +90,4 @@ def posts(blogs, session):
             session.add(post)
             posts.append(post)
     session.commit()
-    yield(posts)
+    yield (posts)

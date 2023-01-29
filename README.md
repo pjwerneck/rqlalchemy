@@ -1,6 +1,6 @@
 # RQLAlchemy
 
-[![Build Status](https://travis-ci.org/pjwerneck/rqlalchemy.svg?branch=develop)](https://travis-ci.org/pjwerneck/rqlalchemy)
+[![Build Status](https://github.com/pjwerneck/rqlalchemy/actions/workflows/pytest.yml/badge.svg?branch=develop)](https://github.com/pjwerneck/rqlalchemy/actions/workflows/pytest.yml)
 
 Resource Query Language extension for SQLAlchemy
 

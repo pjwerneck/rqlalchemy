@@ -76,18 +76,18 @@ class User(Base):
 
 
 class Blog(Base):
-    __tablename__ = 'blog'
+    __tablename__ = "blog"
     id = sa.Column(sa.Integer, primary_key=True)
     title = sa.Column(sa.Text)
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.user_id'))
+    user_id = sa.Column(sa.Integer, sa.ForeignKey("user.user_id"))
 
-    user = relationship('User', backref='blogs')
+    user = relationship("User", backref="blogs")
 
 
 class Post(Base):
-    __tablename__ = 'post'
+    __tablename__ = "post"
     id = sa.Column(sa.Integer, primary_key=True)
     title = sa.Column(sa.Text)
-    blog_id = sa.Column(sa.Integer, sa.ForeignKey('blog.id'))
+    blog_id = sa.Column(sa.Integer, sa.ForeignKey("blog.id"))
 
-    blog = relationship('Blog', backref='posts')
+    blog = relationship("Blog", backref="posts")

@@ -1,8 +1,10 @@
 import pytest
+from fixtures import Blog
+from fixtures import Post
+from fixtures import User
 from sqlalchemy import func
 from sqlalchemy import not_
 
-from fixtures import User, Blog, Post
 from rqlalchemy import RQLQueryError
 
 
@@ -25,11 +27,7 @@ class TestQuery:
 
     def test_complex_sort(self, session):
         res = session.query(User).rql("sort(balance,registered,birthdate)").rql_all()
-        exp = (
-            session.query(User)
-            .order_by(User.balance, User.registered, User.birthdate)
-            .all()
-        )
+        exp = session.query(User).order_by(User.balance, User.registered, User.birthdate).all()
         assert res
         assert res == exp
 
@@ -116,16 +114,8 @@ class TestQuery:
         assert res == exp
 
     def test_one(self, session):
-        res = (
-            session.query(User)
-            .rql("guid=658c407c-6c19-470e-9aa6-8c2b86cddb4b&one()")
-            .rql_all()
-        )
-        exp = [
-            session.query(User)
-            .filter(User.guid == "658c407c-6c19-470e-9aa6-8c2b86cddb4b")
-            .one()
-        ]
+        res = session.query(User).rql("guid=658c407c-6c19-470e-9aa6-8c2b86cddb4b&one()").rql_all()
+        exp = [session.query(User).filter(User.guid == "658c407c-6c19-470e-9aa6-8c2b86cddb4b").one()]
 
         assert len(res) == 1
         assert res == exp
@@ -166,32 +156,20 @@ class TestQuery:
 
     def test_aggregate(self, session):
         res = session.query(User).rql("aggregate(state,sum(balance))").rql_all()
-        exp = to_dict(
-            session.query(User.state, func.sum(User.balance).label("sum"))
-            .group_by(User.state)
-            .all()
-        )
+        exp = to_dict(session.query(User.state, func.sum(User.balance).label("sum")).group_by(User.state).all())
 
         assert res
         assert res == exp
 
     def test_aggregate_count(self, session):
         res = session.query(User).rql("aggregate(gender,count(user_id))").rql_all()
-        exp = to_dict(
-            session.query(User.gender, func.count(User.user_id).label("count"))
-            .group_by(User.gender)
-            .all()
-        )
+        exp = to_dict(session.query(User.gender, func.count(User.user_id).label("count")).group_by(User.gender).all())
 
         assert res
         assert res == exp
 
     def test_aggregate_with_filter(self, session):
-        res = (
-            session.query(User)
-            .rql("aggregate(state,sum(balance))&is_active=true")
-            .rql_all()
-        )
+        res = session.query(User).rql("aggregate(state,sum(balance))&is_active=true").rql_all()
         exp = to_dict(
             session.query(User.state, func.sum(User.balance).label("sum"))
             .filter(User.is_active == True)
@@ -203,28 +181,11 @@ class TestQuery:
         assert res == exp
 
     def test_like_with_relationship_1_deep(self, session, blogs):
-        res = (
-            session.query(User)
-            .rql('like((blogs, title), *1*)')
-            .rql_all()
-        )
-        exp = (
-            session.query(User).join(Blog)
-            .filter(Blog.title.like('%1%'))
-            .all()
-        )
+        res = session.query(User).rql("like((blogs, title), *1*)").rql_all()
+        exp = session.query(User).join(Blog).filter(Blog.title.like("%1%")).all()
         assert res == exp
 
-
     def test_like_with_relationship_2_deep(self, session, posts):
-        res = (
-            session.query(User)
-            .rql('like((blogs, posts, title), *Post 1*)')
-            .rql_all()
-        )
-        exp = (
-            session.query(User).join(Blog).join(Post)
-            .filter(Post.title.like('%Post 1%'))
-            .all()
-        )
+        res = session.query(User).rql("like((blogs, posts, title), *Post 1*)").rql_all()
+        exp = session.query(User).join(Blog).join(Post).filter(Post.title.like("%Post 1%")).all()
         assert res == exp
