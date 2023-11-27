@@ -14,7 +14,7 @@ keywords = ['sqlachemy', 'sql', 'rql', 'querying', 'httpapi']
 [tool.poetry.dependencies]
 python = "^3.8"
 pyrql = "^0.6.0"
-sqlalchemy = "<2.0"
+sqlalchemy = "^2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=4.4.1"
