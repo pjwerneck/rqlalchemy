@@ -4,34 +4,42 @@ import datetime
 import operator
 from copy import deepcopy
 from functools import reduce
-from typing import Any, Callable, Dict, NamedTuple, Optional, Sequence, Union, List
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
+from typing import Union
 
-import sqlalchemy
 from pyrql import RQLSyntaxError
 from pyrql import parse
 from pyrql import unparse
-from sqlalchemy import ColumnElement, Row, RowMapping, and_
-from sqlalchemy import func
-from sqlalchemy import not_
-from sqlalchemy import or_
+from sqlalchemy import ColumnElement
+from sqlalchemy import Row
+from sqlalchemy import RowMapping
 from sqlalchemy import Select
-from sqlalchemy.orm import Session
+from sqlalchemy import func
 from sqlalchemy import sql
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import decl_api
+from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import _typing
 from sqlalchemy.sql import elements
-from sqlalchemy.inspection import inspect
-from sqlalchemy.orm.exc import MultipleResultsFound
-from sqlalchemy.orm import decl_api
-from sqlalchemy.orm.exc import NoResultFound
 
 ArgsType = List[Any]
 BinaryOperator = Callable[[Any, Any], Any]
+
 
 class PaginatedResults(NamedTuple):
     page: Any
     total: int
     previous_page: Optional[str] = None
     next_page: Optional[str] = None
+
 
 class RQLSelectError(Exception):
     pass
@@ -116,7 +124,7 @@ class RQLSelect(Select):
             select_ = select_.distinct()
 
         return select_
-    
+
     def rql_all(self, session: Session) -> Sequence[Union[Union[Row, RowMapping], Any]]:
         """
         Executes the sql expression differently based on which clauses included:
@@ -157,7 +165,7 @@ class RQLSelect(Select):
             return [row._asdict() for row in session.execute(query)]
 
         return session.scalars(self).all()
-    
+
     def rql_paginate(self, session: Session) -> PaginatedResults:
         """
         Convenience function for pagination. Returns:
@@ -190,7 +198,9 @@ class RQLSelect(Select):
         else:
             previous_page = None
 
-        return PaginatedResults(page=page, total=total, previous_page=previous_page, next_page=next_page)
+        return PaginatedResults(
+            page=page, total=total, previous_page=previous_page, next_page=next_page
+        )
 
     def rql_expr_replace(self, replacement: Dict[str, Any]) -> str:
         """Replace any nodes matching the replacement name
@@ -227,7 +237,6 @@ class RQLSelect(Select):
     def _rql_walk(self, node: Dict[str, Any]) -> None:
         if node:
             self._rql_where_clause = self._rql_apply(node)
-
 
     def _rql_apply(self, node: Dict[str, Any]) -> Any:
         if isinstance(node, dict):
@@ -277,10 +286,10 @@ class RQLSelect(Select):
         raise NotImplementedError
 
     def _rql_value(self, value: Any) -> Any:
-            if isinstance(value, dict):
-                value = self._rql_apply(value)
+        if isinstance(value, dict):
+            value = self._rql_apply(value)
 
-            return value
+        return value
 
     def _rql_compare(self, args: ArgsType, op: BinaryOperator) -> elements.BinaryExpression:
         attr, value = args
@@ -328,7 +337,7 @@ class RQLSelect(Select):
     def _rql_limit(self, args: ArgsType) -> None:
         args = [self._rql_value(v) for v in args]
 
-        self._rql_limit_clause =  min(args[0], self._rql_max_limit or float("inf"))
+        self._rql_limit_clause = min(args[0], self._rql_max_limit or float("inf"))
 
         if len(args) == 2:
             self._rql_offset_clause = args[1]
@@ -426,6 +435,7 @@ class RQLSelect(Select):
 
         self._rql_group_by_clause = attributes
         self._rql_select_clause = attributes + aggregations
+
 
 def select(*entities: _typing._ColumnsClauseArgument[Any], **__kw: Any) -> RQLSelect:
     if __kw:
