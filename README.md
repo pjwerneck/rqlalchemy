@@ -18,36 +18,11 @@ pip install rqlalchemy
 
 ## Usage
 
-RQL queries can be supported by an application using SQLAlchemy by adding the `rqlalchemy.RQLQueryMixIn` class as a mix-in class to your base `Query` class:
+RQL queries can be supported by an application by using the `select()` construct provided by RQLAlchemy.
 
-```python
-from sqlalchemy import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Query as BaseQuery
+Once the selectable is created, use the `rql()` method to apply the RQL querystring, and the `execute()` method with the session to retrieve the results.
 
-from rqlalchemy import RQLQueryMixIn
-
-# create the declarative base
-Base = declarative_base()
-
-# create the custom query class
-class RQLQuery(BaseQuery, RQLQueryMixIn):
-    _rql_default_limit = 10
-    _rql_max_limit = 100
-
-# pass the custom query class as a keyworkd argument to the sessionmaker
-session = sessionmaker(bind=engine, query_cls=RQLQuery)
-```
-
-If you're using Flask-SQLAlchemy, you can pass it as a session option:
-
-```
-from flask_sqlalchemy import SQLAlchemy
-db = SQLAlchemy(session_options={"query_cls": RQLQuery})
-
-```
-
-With that in place, you can perform RQL queries by passing the querystring to the query `rql()` method. For example, if you have a Flask HTTP API with an users collection endpoint querying your `User` model:
+For example, if you have a Flask HTTP API with an users collection endpoint querying your `User` model:
 
 ```python
 from urllib.parse import unquote
@@ -56,16 +31,13 @@ from flask import request
 
 @app.route('/users')
 def get_users_collection():
-    qs = unquote(request.query_string.decode(request.charset))
-    query = session.query(User).rql(qs)
-    users = query.rql_all()
+    qs = unquote(request.query_string.decode(request.charset))    
+    users = select(User).rql(qs).execute(session)
 
     return render_response(users)
 ```
 
-### Aggregates
-
-As with the base SQLAlchemy Query class, you can retrieve results with the `all()` method, or by iterating over the query, however, if you want to support RQL expressions with aggregate functions or querying functions that result in a subset of columns, you must retrieve the results with `rql_all()`.
+The `.execute()` method handles the session and adjusts the results accordingly, returning scalars, lists of dicts, or a single scalar result when appropriate. There's no need to use `session.execute()` or `session.scalars()` directly, unless you want to handle the results yourself.
 
 ### Pagination
 
@@ -79,31 +51,31 @@ from flask import request
 @app.route('/users')
 def get_users_collection():
     qs = unquote(request.query_string.decode(request.charset))
-    query = session.query(User).rql(qs)
-    page, previous_page, next_page, total = query.rql_paginate()
+    page, previous_page, next_page, total = select(query.rql_paginate()
+    res = select(User).rql(qs).rql_paginate(session)
 
-    response = {"data": page,
-                "total": total,
+    response = {"data": res.page,
+                "total": res.total,
                }
 
-    if previous_page:
-        response["previous"] = '/users?' + previous_page
+    if res.previous_page:
+        response["previous"] = '/users?' + res.previous_page
 
-    if next_page:
-        response["next"] = '/users?' + next_page
+    if res.next_page:
+        response["next"] = '/users?' + res.next_page
 
     return render_response(response)
 ```
 
-Keep in mind that pagination requires a limit, either a `_rql_default_limit` value, a querystring `limit(x)`, or the `limit` parameter to the `rql()` method. Calling `rql_paginate()` without a limit will raise `RQLQueryError`.
+Pagination requires a limit, as a `RQLSelect._rql_default_limit` value, a querystring `limit(x)`, or the `limit` parameter to the `rql()` method. Calling `rql_paginate()` without a limit will raise `RQLQueryError`.
 
 
 ## Reference Table
 
-| RQL                     | SQLAlchemy                                         | Obs.                                                                                                                            |
+| RQL                     | SQLAlchemy equivalent                              | Obs.                                                                                                                            |
 |-------------------------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | QUERYING                |                                                    |                                                                                                                                 |
-| select(a,b,c,...)       | .query(Model.a, Model.b, Model.c,...)              |                                                                                                                                 |
+| select(a,b,c,...)       | select(Model.a, Model.b, Model.c,...)              |                                                                                                                                 |
 | values(a)               | [o.a for o in query.from_self(a)]                  |                                                                                                                                 |
 | limit(count,start?)     | .limit(count).offset(start)                        |                                                                                                                                 |
 | sort(attr1)             | .order_by(attr)                                    |                                                                                                                                 |
@@ -112,22 +84,22 @@ Keep in mind that pagination requires a limit, either a `_rql_default_limit` val
 | first()                 | .limit(1)                                          |                                                                                                                                 |
 | one()                   | [query.one()]                                      |                                                                                                                                 |
 | FILTERING               |                                                    |                                                                                                                                 |
-| eq(attr,value)          | .filter(Model.attr == value)                       |                                                                                                                                 |
-| ne(attr,value)          | .filter(Model.attr != value)                       |                                                                                                                                 |
-| lt(attr,value)          | .filter(Model.attr < value)                        |                                                                                                                                 |
-| le(attr,value)          | .filter(Model.attr <= value)                       |                                                                                                                                 |
-| gt(attr,value)          | .filter(Model.attr > value)                        |                                                                                                                                 |
-| ge(attr,value)          | .filter(Model.attr >= value)                       |                                                                                                                                 |
-| in(attr,value)          | .filter(Model.attr.in_(value)                      |                                                                                                                                 |
-| out(attr,value)         | .filter(not_(Model.attr.in_(value)))               |                                                                                                                                 |
-| contains(attr,value)    | .filter(Model.contains(value))                     | Produces a LIKE expression when filtering against a string, or an IN expression when filtering against an iterable relationship |
-| excludes(attr,value)    | .filter(not_(Model.contains(value)))               | See above.                                                                                                                      |
-| and(expr1,expr2,...)    | .filter(and_(expr1, expr2, ...))                   |                                                                                                                                 |
-| or(expr1,expr2,...)     | .filter(or_(expr1, expr2, ...))                    |                                                                                                                                 |
+| eq(attr,value)          | .where(Model.attr == value)                        |                                                                                                                                 |
+| ne(attr,value)          | .where(Model.attr != value)                        |                                                                                                                                 |
+| lt(attr,value)          | .where(Model.attr < value)                         |                                                                                                                                 |
+| le(attr,value)          | .where(Model.attr <= value)                        |                                                                                                                                 |
+| gt(attr,value)          | .where(Model.attr > value)                         |                                                                                                                                 |
+| ge(attr,value)          | .where(Model.attr >= value)                        |                                                                                                                                 |
+| in(attr,value)          | .where(Model.attr.in_(value)                       |                                                                                                                                 |
+| out(attr,value)         | .where(not_(Model.attr.in_(value)))                |                                                                                                                                 |
+| contains(attr,value)    | .where(Model.contains(value))                      | Produces a LIKE expression when querying against a string, or an IN expression when querying against an iterable relationship   |
+| excludes(attr,value)    | .where(not_(Model.contains(value)))                | See above.                                                                                                                      |
+| and(expr1,expr2,...)    | .where(and_(expr1, expr2, ...))                    |                                                                                                                                 |
+| or(expr1,expr2,...)     | .where(or_(expr1, expr2, ...))                     |                                                                                                                                 |
 | AGGREGATING             |                                                    | All aggregation functions return scalar results.                                                                                |
-| aggregate(a,b\(c\),...) | .query(Model.a, func.b(Model.c)).group_by(Model.a) |                                                                                                                                 |
-| sum(attr)               | .query(func.sum(Model.attr))                       |                                                                                                                                 |
-| mean(attr)              | .query(func.avg(Model.attr))                       |                                                                                                                                 |
-| max(attr)               | .query(func.max(Model.attr))                       |                                                                                                                                 |
-| min(attr)               | .query(func.min(Model.attr))                       |                                                                                                                                 |
-| count()                 | .query(func.count())                               |                                                                                                                                 |
+| aggregate(a,b\(c\),...) | select(Model.a, func.b(Model.c)).group_by(Model.a) |                                                                                                                                 |
+| sum(attr)               | select(func.sum(Model.attr))                       |                                                                                                                                 |
+| mean(attr)              | select(func.avg(Model.attr))                       |                                                                                                                                 |
+| max(attr)               | select(func.max(Model.attr))                       |                                                                                                                                 |
+| min(attr)               | select(func.min(Model.attr))                       |                                                                                                                                 |
+| count()                 | select(func.count())                               |                                                                                                                                 |
