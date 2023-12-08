@@ -68,7 +68,6 @@ class RQLSelect(Select):
         self._rql_joins = []
         self._rql_aliased_models = {}
 
-    # properties added for compatibility with sqlalchemy < 1.4
     @property
     def _rql_select_entities(self) -> List[decl_api.DeclarativeMeta]:
         return [t._annotations["parententity"].entity for t in self._raw_columns]
@@ -93,7 +92,7 @@ class RQLSelect(Select):
             try:
                 self.rql_parsed: Dict[str, Any] = parse(query)
             except RQLSyntaxError as e:
-                raise self._rql_error_cls(f"RQL Syntax error: {e.args}")
+                raise self._rql_error_cls(f"RQL Syntax error: {e.args}") from e
 
         self._rql_walk(self.rql_parsed)
 
@@ -141,10 +140,10 @@ class RQLSelect(Select):
         if self._rql_one_clause is not None:
             try:
                 return [session.scalars(self).one()]
-            except NoResultFound:
-                raise RQLSelectError("No result found for one()")
-            except MultipleResultsFound:
-                raise RQLSelectError("Multiple results found for one()")
+            except NoResultFound as e:
+                raise RQLSelectError("No result found for one()") from e
+            except MultipleResultsFound as e:
+                raise RQLSelectError("Multiple results found for one()") from e
 
         if self._rql_values_clause is not None:
             query = self.with_only_columns(self._rql_values_clause)
@@ -228,9 +227,8 @@ class RQLSelect(Select):
 
         else:
             for arg in root["args"]:
-                if isinstance(arg, dict):
-                    if self._rql_traverse_and_replace(arg, name, args):
-                        return True
+                if isinstance(arg, dict) and self._rql_traverse_and_replace(arg, name, args):
+                    return True
 
         return False
 
@@ -247,16 +245,13 @@ class RQLSelect(Select):
                 return self._rql_compare(args, getattr(operator, name))
 
             try:
-                method = getattr(self, "_rql_" + name)
-            except AttributeError:
-                raise self._rql_error_cls("Invalid query function: %s" % name)
+                method = getattr(self, f"_rql_{name}")
+            except AttributeError as e:
+                raise self._rql_error_cls(f"Invalid query function: {name}") from e
 
             return method(args)
 
-        elif isinstance(node, list):
-            raise NotImplementedError
-
-        elif isinstance(node, tuple):
+        elif isinstance(node, (list, tuple)):
             raise NotImplementedError
 
         return node
@@ -267,22 +262,19 @@ class RQLSelect(Select):
         if isinstance(attr, str):
             try:
                 return getattr(model, attr)
-            except AttributeError:
-                raise self._rql_error_cls("Invalid query attribute: %s" % attr)
+            except AttributeError as e:
+                raise self._rql_error_cls(f"Invalid query attribute: {attr}") from e
 
         elif isinstance(attr, tuple):
             # Every entry in attr but the last should be a relationship name.
             for name in attr[:-1]:
-                if name in inspect(model).relationships:
-                    relation = getattr(model, name)
-                    self._rql_joins.append(relation)
-                    model = relation.mapper.class_
-                else:
+                if name not in inspect(model).relationships:
                     raise AttributeError(f'{model} has no relationship "{name}"')
-            # Get the column from the last entry in attr.
-            column = getattr(model, attr[-1])
-            return column
 
+                relation = getattr(model, name)
+                self._rql_joins.append(relation)
+                model = relation.mapper.class_
+            return getattr(model, attr[-1])
         raise NotImplementedError
 
     def _rql_value(self, value: Any) -> Any:
@@ -300,16 +292,12 @@ class RQLSelect(Select):
 
     def _rql_and(self, args: ArgsType) -> Optional[elements.BooleanClauseList]:
         args = [self._rql_apply(node) for node in args]
-        args = [a for a in args if a is not None]
-
-        if args:
+        if args := [a for a in args if a is not None]:
             return reduce(sql.and_, args)
 
     def _rql_or(self, args: ArgsType) -> Optional[elements.BooleanClauseList]:
         args = [self._rql_apply(node) for node in args]
-        args = [a for a in args if a is not None]
-
-        if args:
+        if args := [a for a in args if a is not None]:
             return reduce(sql.or_, args)
 
     def _rql_in(self, args: ArgsType) -> elements.BinaryExpression:

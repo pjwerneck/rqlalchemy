@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import os
-import sys
 from datetime import datetime
 from decimal import Decimal
 
 import sqlalchemy as sa
 from dateutil.parser import parse as parse_dt
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
