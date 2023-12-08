@@ -2,61 +2,57 @@
 
 [![Build Status](https://github.com/pjwerneck/rqlalchemy/actions/workflows/pytest.yml/badge.svg?branch=develop)](https://github.com/pjwerneck/rqlalchemy/actions/workflows/pytest.yml)
 
-Resource Query Language extension for SQLAlchemy
+## Resource Query Language extension for SQLAlchemy
 
-## Overview
+**Overview**
 
 Resource Query Language (RQL) is a query language designed for use in URIs, with object-style data structures.
 
-rqlalchemy is an RQL extension for SQLAlchemy. It easily allows exposing SQLAlchemy tables or models as an HTTP API endpoint and performing complex queries using only querystring parameters.
+`rqlalchemy` is an RQL extension for SQLAlchemy, making it easy to expose SQLAlchemy tables or models as an HTTP API endpoint and perform complex queries using only query string parameters.
 
-## Installing
+**Installing**
 
-```
+```bash
 pip install rqlalchemy
 ```
 
-## Usage
+**Usage**
 
-RQL queries can be supported by an application by using the `select()` construct provided by RQLAlchemy.
+Support RQL queries in your application by using the `select()` construct provided by RQLAlchemy. After creating the selectable, use the `rql()` method to apply the RQL query string, and then use the `execute()` method with the session to retrieve the results.
 
-Once the selectable is created, use the `rql()` method to apply the RQL querystring, and the `execute()` method with the session to retrieve the results.
-
-For example, if you have a Flask HTTP API with an users collection endpoint querying your `User` model:
+For example, in a Flask HTTP API with a users collection endpoint querying the `User` model:
 
 ```python
 from urllib.parse import unquote
-
-from flask import request
-
-@app.route('/users')
-def get_users_collection():
-    qs = unquote(request.query_string.decode(request.charset))    
-    users = select(User).rql(qs).execute(session)
-
-    return render_response(users)
-```
-
-The `.execute()` method handles the session and adjusts the results accordingly, returning scalars, lists of dicts, or a single scalar result when appropriate. There's no need to use `session.execute()` or `session.scalars()` directly, unless you want to handle the results yourself.
-
-### Pagination
-
-RQLAlchemy offers limit/offset pagination with the `rql_paginate()` method, which returns the requested page, the RQL expressions for previous and next pages if available, and the total number of items.
-
-```python
-from urllib.parse import unquote
-
 from flask import request
 
 @app.route('/users')
 def get_users_collection():
     qs = unquote(request.query_string.decode(request.charset))
-    page, previous_page, next_page, total = select(query.rql_paginate()
+    users = select(User).rql(qs).execute(session)
+
+    return render_response(users)
+```
+
+The `.execute()` method handles the session and adjusts the results accordingly, returning scalars, lists of dicts, or a single scalar result when appropriate. There's no need to use `session.execute()` or `session.scalars()` directly unless you want to handle the results yourself.
+
+**Pagination**
+
+RQLAlchemy offers limit/offset pagination with the `rql_paginate()` method, returning the requested page, RQL expressions for previous and next pages if available, and the total number of items.
+
+```python
+from urllib.parse import unquote
+from flask import request
+
+@app.route('/users')
+def get_users_collection():
+    qs = unquote(request.query_string.decode(request.charset))
     res = select(User).rql(qs).rql_paginate(session)
 
-    response = {"data": res.page,
-                "total": res.total,
-               }
+    response = {
+        "data": res.page,
+        "total": res.total,
+    }
 
     if res.previous_page:
         response["previous"] = '/users?' + res.previous_page
@@ -67,12 +63,11 @@ def get_users_collection():
     return render_response(response)
 ```
 
-Pagination requires a limit, as a `RQLSelect._rql_default_limit` value, a querystring `limit(x)`, or the `limit` parameter to the `rql()` method. Calling `rql_paginate()` without a limit will raise `RQLQueryError`.
+Pagination requires a limit, as a `RQLSelect._rql_default_limit` value, a query string `limit(x)`, or the `limit` parameter to the `rql()` method. Calling `rql_paginate()` without a limit will raise `RQLQueryError`.
 
+**Reference Table**
 
-## Reference Table
-
-| RQL                     | SQLAlchemy equivalent                              | Obs.                                                                                                                            |
+| RQL                     | SQLAlchemy equivalent                              | Observation                                                                                                                     |
 |-------------------------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
 | QUERYING                |                                                    |                                                                                                                                 |
 | select(a,b,c,...)       | select(Model.a, Model.b, Model.c,...)              |                                                                                                                                 |
@@ -103,3 +98,4 @@ Pagination requires a limit, as a `RQLSelect._rql_default_limit` value, a querys
 | max(attr)               | select(func.max(Model.attr))                       |                                                                                                                                 |
 | min(attr)               | select(func.min(Model.attr))                       |                                                                                                                                 |
 | count()                 | select(func.count())                               |                                                                                                                                 |
+
