@@ -7,13 +7,10 @@ import pytest
 from fixtures import Base
 from fixtures import Blog
 from fixtures import Post
-from fixtures import RQLQuery
 from fixtures import Tag
 from fixtures import User
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-from rqlalchemy.query import SQLALCHEMY_VERSION
 
 
 @pytest.fixture(scope="session")
@@ -26,7 +23,7 @@ def session(engine):
 
     Base.metadata.create_all(engine)
 
-    session_ = sessionmaker(bind=engine, query_cls=RQLQuery)
+    session_ = sessionmaker(bind=engine)
 
     # load fixtures
     fpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "users.json")
@@ -65,10 +62,7 @@ def session(engine):
 def blogs(session):
     blogs = []
     for uid in range(3):
-        if SQLALCHEMY_VERSION < (1, 4, 0):
-            user = session.query(User).get(uid)
-        else:
-            user = session.get(User, uid)
+        user = session.get(User, uid)
         for blog_no in range(3):
             blog = Blog(title=f"Blog {blog_no} for {user.name}", user=user)
             blogs.append(blog)

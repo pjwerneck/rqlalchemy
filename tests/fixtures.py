@@ -9,17 +9,10 @@ import sqlalchemy as sa
 from dateutil.parser import parse as parse_dt
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Query as BaseQuery
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
-from rqlalchemy import RQLQueryMixIn
-
 Base = declarative_base()
-
-
-class RQLQuery(BaseQuery, RQLQueryMixIn):
-    pass
 
 
 class Tag(Base):
