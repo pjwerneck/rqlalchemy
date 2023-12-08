@@ -124,7 +124,7 @@ class RQLSelect(Select):
 
         return select_
 
-    def rql_all(self, session: Session) -> Sequence[Union[Union[Row, RowMapping], Any]]:
+    def execute(self, session: Session) -> Sequence[Union[Union[Row, RowMapping], Any]]:
         """
         Executes the sql expression differently based on which clauses included:
         - For single aggregates a scalar is returned
@@ -179,7 +179,7 @@ class RQLSelect(Select):
         if limit is None:
             raise RQLSelectError("Pagination requires a limit value")
 
-        page = self.rql_all(session)
+        page = self.execute(session)
 
         total_query = self.limit(None).offset(None).order_by(None)
         total_query_count = sql.select(func.count()).select_from(total_query.subquery())

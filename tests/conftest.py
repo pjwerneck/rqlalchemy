@@ -7,7 +7,6 @@ import pytest
 from fixtures import Base
 from fixtures import Blog
 from fixtures import Post
-from fixtures import Tag
 from fixtures import User
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -20,7 +19,6 @@ def engine():
 
 @pytest.fixture(scope="session")
 def session(engine):
-
     Base.metadata.create_all(engine)
 
     session_ = sessionmaker(bind=engine)

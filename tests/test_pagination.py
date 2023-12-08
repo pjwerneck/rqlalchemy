@@ -39,7 +39,9 @@ class TestPagination:
         assert res.next_page == "and(in(state,(FL,TX)),limit(10,10),sort(name))"
         assert res.total == 34
 
-        exp = session.scalars(select(User).filter(User.state.in_(("FL", "TX"))).order_by(User.name).limit(10)).all()
+        exp = session.scalars(
+            select(User).filter(User.state.in_(("FL", "TX"))).order_by(User.name).limit(10)
+        ).all()
         assert res.page
         assert res.page == exp
 
