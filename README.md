@@ -26,6 +26,8 @@ For example, in a Flask HTTP API with a users collection endpoint querying the `
 from urllib.parse import unquote
 from flask import request
 
+from rqlalchemy import select
+
 @app.route('/users')
 def get_users_collection():
     qs = unquote(request.query_string.decode(request.charset))
@@ -43,6 +45,8 @@ RQLAlchemy offers limit/offset pagination with the `rql_paginate()` method, retu
 ```python
 from urllib.parse import unquote
 from flask import request
+
+from rqlalchemy import select
 
 @app.route('/users')
 def get_users_collection():
