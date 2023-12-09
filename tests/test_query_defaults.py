@@ -2,9 +2,9 @@
 
 from unittest.mock import patch
 
-from fixtures import User
-
 from rqlalchemy.query import select
+
+from .fixtures import User
 
 
 class TestQueryDefaults:

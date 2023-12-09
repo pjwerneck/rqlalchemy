@@ -1,8 +1,9 @@
 import pytest
-from fixtures import User
 
 from rqlalchemy import RQLSelectError
 from rqlalchemy.query import select
+
+from .fixtures import User
 
 
 class TestPagination:

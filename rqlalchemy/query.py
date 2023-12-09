@@ -29,6 +29,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import _typing
 from sqlalchemy.sql import elements
+from sqlalchemy.sql.sqltypes import JSON
 
 ArgsType = List[Any]
 BinaryOperator = Callable[[Any, Any], Any]
@@ -80,9 +81,9 @@ class RQLSelect(Select):
     def _rql_select_offset(self):
         return self._offset_clause.value if self._offset_clause is not None else None
 
-    def rql(self, query: str = "", limit: Optional[int] = None) -> "RQLSelect":
+    def rql(self, query: str = "", limit: Optional[int] = None) -> "RQLSelect":  # noqa: C901
         if len(self._rql_select_entities) > 1:
-            raise NotImplementedError("Select must have only one entity")
+            raise self._rql_error_cls("Select must have only one entity")
 
         if not query:
             self.rql_parsed = None
@@ -124,7 +125,9 @@ class RQLSelect(Select):
 
         return select_
 
-    def execute(self, session: Session) -> Sequence[Union[Union[Row, RowMapping], Any]]:
+    def execute(  # noqa: C901
+        self, session: Session
+    ) -> Sequence[Union[Union[Row, RowMapping], Any]]:  # noqa: C901
         """
         Executes the sql expression differently based on which clauses included:
         - For single aggregates a scalar is returned
@@ -256,9 +259,10 @@ class RQLSelect(Select):
 
         return node
 
-    def _rql_attr(self, attr):
-        model = self._rql_select_entities[0]
+    def _rql_attr(self, attr, model=None):
+        model = model or self._rql_select_entities[0]
 
+        # if it's just a plain attribute name, return it
         if isinstance(attr, str):
             try:
                 return getattr(model, attr)
@@ -266,16 +270,37 @@ class RQLSelect(Select):
                 raise self._rql_error_cls(f"Invalid query attribute: {attr}") from e
 
         elif isinstance(attr, tuple):
-            # Every entry in attr but the last should be a relationship name.
-            for name in attr[:-1]:
-                if name not in inspect(model).relationships:
-                    raise AttributeError(f'{model} has no relationship "{name}"')
+            # if it's an one-item tuple resolve it recursively
+            if len(attr) == 1:
+                return self._rql_attr(attr[0], model)
 
+            # if there are more than one item in the tuple, resolve the first
+            # item
+
+            name = attr[0]
+            # if it's a relationship, resolve it, add a join, and resolve the
+            # rest recursively
+            if name in inspect(model).relationships:
                 relation = getattr(model, name)
                 self._rql_joins.append(relation)
                 model = relation.mapper.class_
-            return getattr(model, attr[-1])
-        raise NotImplementedError
+                return self._rql_attr(attr[1:], model)
+
+            # if it's a JSON column, build a path to the value using the
+            # remaining entries, set the field name as key to be used in RQL
+            # select clauses, and return the result immediately.
+            if isinstance(inspect(model).columns[name].type, JSON):
+                json_column = getattr(model, name)
+                json_path = reduce(operator.getitem, attr[1:], json_column)  # noqa: E203
+                json_path.key = attr[-1]
+                return json_path
+
+            # if it's neither, something is wrong.
+            raise self._rql_error_cls(f"Invalid nested query attribute: {name}")
+
+        # Parsed RQL attributes are either strings or tuples. We should never
+        # get here.
+        raise TypeError(f"Invalid attribute type: {attr}")
 
     def _rql_value(self, value: Any) -> Any:
         if isinstance(value, dict):
@@ -283,10 +308,45 @@ class RQLSelect(Select):
 
         return value
 
+    def _rql_set_attr_type_for_json_value(self, attr: Any, value: Any) -> Any:
+        # if it's not a JSON column, return it unchanged
+        if not isinstance(attr.type, JSON):
+            return attr
+
+        # if value is a list of values, they must all be of the same type
+        if isinstance(value, list):
+            if not value:
+                return attr
+
+            value_type = type(value[0])
+            if not all(isinstance(v, value_type) for v in value):
+                raise self._rql_error_cls(
+                    "Cannot compare JSON column against multiple values of different types"
+                )
+
+            value = value[0]
+
+        # if it's a JSON column, cast the value to the appropriate type
+        if isinstance(value, str):
+            return attr.as_string()
+        if isinstance(value, bool):
+            return attr.as_boolean()
+        elif isinstance(value, int):
+            return attr.as_integer()
+        elif isinstance(value, float):
+            return attr.as_float()
+        else:
+            # NOTE: we might have to add support for all pyrql types here
+            raise self._rql_error_cls(
+                f"Cannot cast to type {type(value)} for comparison with JSON column"
+            )
+
     def _rql_compare(self, args: ArgsType, op: BinaryOperator) -> elements.BinaryExpression:
         attr, value = args
         attr = self._rql_attr(attr=attr)
         value = self._rql_value(value)
+
+        attr = self._rql_set_attr_type_for_json_value(attr, value)
 
         return op(attr, value)
 
@@ -305,12 +365,16 @@ class RQLSelect(Select):
         attr = self._rql_attr(attr=attr)
         value = self._rql_value([str(v) for v in value])
 
+        attr = self._rql_set_attr_type_for_json_value(attr, value)
+
         return attr.in_(value)
 
     def _rql_out(self, args: ArgsType) -> elements.BinaryExpression:
         attr, value = args
         attr = self._rql_attr(attr=attr)
         value = self._rql_value([str(v) for v in value])
+
+        attr = self._rql_set_attr_type_for_json_value(attr, value)
 
         return sql.not_(attr.in_(value))
 
