@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rqlalchemy"
-version = "0.4.5"
+version = "0.5.0"
 description = "\"Resource Query Language for SQLAlchemy\""
 authors = ["Pedro Werneck <pjwerneck@gmail.com>"]
 license = "MIT"
