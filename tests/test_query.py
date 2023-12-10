@@ -1,3 +1,5 @@
+from statistics import mean
+
 import pytest
 from sqlalchemy import func
 
@@ -92,8 +94,10 @@ class TestQuery:
     def test_mean(self, session, users):
         res = select(User).rql("mean(balance)").execute(session)
         # SQLAlchemy average is cast to float instead of Decimal?
-        exp = sum([float(u.balance) for u in users]) / len(users)
-        assert res == exp
+        exp = mean([float(u.balance) for u in users])
+        # python 3.12 uses a more precise sum algorithm which affects the float
+        # mean, so use pytest.approx to account for that.
+        assert res == pytest.approx(exp)
 
     def test_max(self, session, users):
         res = select(User).rql("max(balance)").execute(session)
