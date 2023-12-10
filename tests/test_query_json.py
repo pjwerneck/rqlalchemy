@@ -89,27 +89,27 @@ class TestQueryJSON:
         assert res
         assert res == exp
 
-    def test_filter_by_json_key_1_deep_string(self, session):
+    def test_filter_by_json_key_1_deep_string(self, session, users):
         res = select(User).rql("eq((misc,eye_color),blue)").execute(session)
-        exp = [u for u in session.scalars(select(User)) if u.misc["eye_color"] == "blue"]
+        exp = [u for u in users if u.misc["eye_color"] == "blue"]
         assert res
         assert res == exp
 
-    def test_filter_by_json_key_1_deep_bool(self, session):
+    def test_filter_by_json_key_1_deep_bool(self, session, users):
         res = select(User).rql("eq((misc,likes_apples),true)").execute(session)
-        exp = [u for u in session.scalars(select(User)) if u.misc["likes_apples"]]
+        exp = [u for u in users if u.misc["likes_apples"] is True]
         assert res
         assert res == exp
 
-    def test_filter_by_json_key_1_deep_integer(self, session):
+    def test_filter_by_json_key_1_deep_integer(self, session, users):
         res = select(User).rql("eq((misc,unread_messages),8)").execute(session)
-        exp = [u for u in session.scalars(select(User)) if u.misc["unread_messages"] == 8]
+        exp = [u for u in users if u.misc["unread_messages"] == 8]
         assert res
         assert res == exp
 
-    def test_filter_by_json_key_1_deep_float(self, session):
+    def test_filter_by_json_key_1_deep_float(self, session, users):
         res = select(User).rql("gt((misc,balance),1000.0)").execute(session)
-        exp = [u for u in session.scalars(select(User)) if u.misc["balance"] > 1000]
+        exp = [u for u in users if u.misc["balance"] > 1000]
         assert res
         assert res == exp
 
