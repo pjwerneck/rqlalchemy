@@ -64,6 +64,9 @@ def session(engine):
                         "coordinates": [raw["longitude"], raw["latitude"]],
                     },
                     "balance": float(raw["balance"].strip("$").replace(",", "")),
+                    # add a key that might be present or not to test JSON NULL
+                    # handling with missing keys
+                    raw["gender"]: True,
                 },
             )
             localsession.add(obj)

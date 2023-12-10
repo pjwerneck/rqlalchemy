@@ -113,6 +113,12 @@ class TestQueryJSON:
         assert res
         assert res == exp
 
+    def test_filter_by_json_key_1_deep_decimal(self, session, users):
+        res = select(User).rql("gt((misc,balance),decimal:1000)").execute(session)
+        exp = [u for u in users if u.misc["balance"] > 1000]
+        assert res
+        assert res == exp
+
     def test_filter_by_json_key_2_deep(self, session, users):
         res = select(User).rql("eq((misc,preferences,favorite_fruit),banana)").execute(session)
         exp = [u for u in users if u.misc["preferences"]["favorite_fruit"] == "banana"]
@@ -184,5 +190,24 @@ class TestQueryJSON:
     def test_like_with_relationship_2_deep(self, session, users):
         res = select(User).rql("like((misc,preferences,favorite_fruit),*ana*)").execute(session)
         exp = [u for u in users if "ana" in u.misc["preferences"]["favorite_fruit"]]
+        assert res
+        assert res == exp
+
+
+class TestQueryInvalidJSON:
+    def test_filter_by_possibly_missing_key(self, session, users):
+        res = select(User).rql("eq((misc,female),true)").execute(session)
+        exp = [u for u in users if u.misc.get("female") is True]
+        assert res == exp
+
+    def test_filter_by_missing_key_matches_null(self, session, users):
+        res = select(User).rql("eq((misc,male),null)").execute(session)
+        exp = [u for u in users if u.misc.get("male") is None]
+        assert res
+        assert res == exp
+
+    def test_select_invalid_key_returns_none(self, session, users):
+        res = select(User).rql("select((misc,invalid))").execute(session)
+        exp = [{"invalid": None} for _ in users]
         assert res
         assert res == exp
