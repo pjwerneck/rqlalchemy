@@ -38,6 +38,9 @@ class User(Base):
     state = sa.Column(sa.String(2))
     balance = sa.Column(sa.Numeric(9, 2))
 
+    raw = sa.Column(sa.JSON)
+    misc = sa.Column(sa.JSON)
+
     _tags = relationship("Tag")
     tags = association_proxy("_tags", "name", creator=lambda name: Tag(name=name))
 

@@ -2,14 +2,17 @@
 
 import json
 import os
+import re
 
 import pytest
-from fixtures import Base
-from fixtures import Blog
-from fixtures import Post
-from fixtures import User
 from sqlalchemy import create_engine
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
+
+from .fixtures import Base
+from .fixtures import Blog
+from .fixtures import Post
+from .fixtures import User
 
 
 @pytest.fixture(scope="session")
@@ -45,8 +48,27 @@ def session(engine):
                 state=raw["state"],
                 tags=raw["tags"],
                 balance=raw["balance"],
+                raw=raw,
+                misc={
+                    "eye_color": raw["eyeColor"],
+                    "likes_apples": raw["favoriteFruit"] == "apple",
+                    "unread_messages": int(
+                        re.search(r"You have (\d+) unread messages", raw["greeting"]).group(1)
+                    ),
+                    "latitude": raw["latitude"],
+                    "preferences": {
+                        "favorite_fruit": raw["favoriteFruit"],
+                    },
+                    "location": {
+                        "type": "Point",
+                        "coordinates": [raw["longitude"], raw["latitude"]],
+                    },
+                    "balance": float(raw["balance"].strip("$").replace(",", "")),
+                    # add a key that might be present or not to test JSON NULL
+                    # handling with missing keys
+                    raw["gender"]: True,
+                },
             )
-
             localsession.add(obj)
 
     localsession.commit()
@@ -83,3 +105,8 @@ def posts(blogs, session):
             posts.append(post)
     session.commit()
     yield (posts)
+
+
+@pytest.fixture(name="users")
+def _users(session):
+    return session.scalars(select(User)).all()
