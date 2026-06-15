@@ -1,6 +1,6 @@
 [project]
 name = "rqlalchemy"
-version = "0.6.0"
+version = "0.6.1"
 description = "Resource Query Language for SQLAlchemy"
 authors = [{ name = "Pedro Werneck", email = "pjwerneck@gmail.com" }]
 license = { text = "MIT" }
