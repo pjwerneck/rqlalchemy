@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import json
-import os
 import re
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
@@ -27,10 +25,10 @@ def session(engine):
     session_ = sessionmaker(bind=engine)
 
     # load fixtures
-    fpath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "users.json")
+    fpath = Path(__file__).resolve().parent / "users.json"
 
     localsession = session_()
-    with open(fpath) as f:
+    with fpath.open() as f:
         users = json.load(f)
 
         for raw in users:
@@ -88,7 +86,7 @@ def blogs(session):
             blogs.append(blog)
             session.add(blog)
     session.commit()
-    yield (blogs)
+    return blogs
 
 
 @pytest.fixture(scope="session")
@@ -104,7 +102,7 @@ def posts(blogs, session):
             session.add(post)
             posts.append(post)
     session.commit()
-    yield (posts)
+    return posts
 
 
 @pytest.fixture(name="users")

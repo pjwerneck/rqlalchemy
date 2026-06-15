@@ -1,38 +1,101 @@
-[tool.poetry]
+[project]
 name = "rqlalchemy"
 version = "0.6.0"
-description = "\"Resource Query Language for SQLAlchemy\""
-authors = ["Pedro Werneck <pjwerneck@gmail.com>"]
-license = "MIT"
-readme = 'README.md'
+description = "Resource Query Language for SQLAlchemy"
+authors = [{ name = "Pedro Werneck", email = "pjwerneck@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["sqlachemy", "sql", "rql", "querying", "httpapi"]
+dependencies = [
+    "pyrql>=0.7.11",
+    "sqlalchemy>=2.0",
+]
 
-repository = "https://github.com/pjwerneck/rqlalchemy"
-homepage = "https://github.com/pjwerneck/rqlalchemy"
+[project.urls]
+Repository = "https://github.com/pjwerneck/rqlalchemy"
+Homepage = "https://github.com/pjwerneck/rqlalchemy"
 
-keywords = ['sqlachemy', 'sql', 'rql', 'querying', 'httpapi']
-
-[tool.poetry.dependencies]
-python = "^3.8"
-pyrql = "^0.7.8"
-sqlalchemy = "^2.0"
-
-[tool.poetry.group.dev.dependencies]
-isort = "^5.12.0"
-black = ">=23.11,<25.0"
-pytest = "^7.4.3"
-pytest-coverage = "^0.0"
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "pytest-coverage>=0.0",
+    "ruff>=0.9.5",
+]
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.black]
+[tool.hatch.build.targets.wheel]
+packages = ["rqlalchemy"]
+
+[tool.ruff]
+exclude = [".git", ".venv"]
 line-length = 99
+target-version = "py38"
+preview = false
 
-[tool.isort]
-profile = "black"
-force_single_line = "True"
-line_length = 99
+[tool.ruff.lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "BLE",
+    "C4",
+    "C90",
+    "DTZ",
+    "E",
+    "F",
+    "FURB",
+    "G",
+    "I",
+    "ICN",
+    "INT",
+    "ISC",
+    "LOG",
+    "N",
+    "NPY",
+    "PD",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLOT",
+    "T20",
+    "TC",
+    "TD",
+    "TID",
+    "TRY",
+    "UP",
+    "W",
+]
+
+ignore = [
+  "TRY003",
+  "UP007",
+  "PLR2004",
+  "S101",
+
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.isort]
+force-single-line = true
 
 [tool.pytest.ini_options]
 pythonpath = [

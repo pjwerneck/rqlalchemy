@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import datetime
 import operator
 from copy import deepcopy
@@ -130,7 +128,7 @@ class RQLSelect(Select):
 
     def execute(  # noqa: C901
         self, session: Session
-    ) -> Sequence[Union[Union[Row, RowMapping], Any]]:  # noqa: C901
+    ) -> Sequence[Union[Union[Row, RowMapping], Any]]:
         """
         Executes the sql expression differently based on which clauses included:
         - For single aggregates a scalar is returned
@@ -231,10 +229,9 @@ class RQLSelect(Select):
             root["args"] = args
             return True
 
-        else:
-            for arg in root["args"]:
-                if isinstance(arg, dict) and self._rql_traverse_and_replace(arg, name, args):
-                    return True
+        for arg in root["args"]:
+            if isinstance(arg, dict) and self._rql_traverse_and_replace(arg, name, args):
+                return True
 
         return False
 
@@ -257,7 +254,7 @@ class RQLSelect(Select):
 
             return method(args)
 
-        elif isinstance(node, (list, tuple)):
+        if isinstance(node, (list, tuple)):
             raise TypeError(f"Invalid node type: {type(node)}")
 
         return node
@@ -296,7 +293,7 @@ class RQLSelect(Select):
             # remaining entries, set the field name as key to be used in RQL
             # select clauses, and return the result immediately.
             if isinstance(getattr(column, "type", None), JSON):
-                json_path = reduce(operator.getitem, attr[1:], column)  # noqa: E203
+                json_path = reduce(operator.getitem, attr[1:], column)
                 json_path.key = attr[-1]
                 return json_path
 
@@ -342,15 +339,15 @@ class RQLSelect(Select):
         # if it's a JSON column, cast the value to the appropriate type
         if issubclass(type_, str):
             return attr.as_string(), value
-        elif issubclass(type_, bool):
+        if issubclass(type_, bool):
             return attr.as_boolean(), value
-        elif issubclass(type_, int):
+        if issubclass(type_, int):
             return attr.as_integer(), value
-        elif issubclass(type_, Decimal):
+        if issubclass(type_, Decimal):
             precision = abs(value.as_tuple().exponent)
             scale = len(value.as_tuple().digits) - precision
             return attr.as_numeric(precision, scale), value
-        elif issubclass(type_, float):
+        if issubclass(type_, float):
             return attr.as_float(), value
 
         # NOTE: we might have to add support for all pyrql types here
@@ -374,11 +371,13 @@ class RQLSelect(Select):
         args = [self._rql_apply(node) for node in args]
         if args := [a for a in args if a is not None]:
             return reduce(sql.and_, args)
+        return None
 
     def _rql_or(self, args: ArgsType) -> Optional[elements.BooleanClauseList]:
         args = [self._rql_apply(node) for node in args]
         if args := [a for a in args if a is not None]:
             return reduce(sql.or_, args)
+        return None
 
     def _rql_in(self, args: ArgsType) -> elements.BinaryExpression:
         attr, value = args
@@ -488,7 +487,7 @@ class RQLSelect(Select):
         return datetime.date(*args)
 
     def _rql_dt(self, args: ArgsType) -> datetime.datetime:
-        return datetime.datetime(*args)
+        return datetime.datetime(*args)  # noqa: DTZ001
 
     def _rql_aggregate(self, args: ArgsType) -> None:
         attributes = []

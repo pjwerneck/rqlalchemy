@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from datetime import datetime
 from decimal import Decimal
 
@@ -46,7 +44,7 @@ class User(Base):
 
     @validates("birthdate")
     def validate_birthdate(self, key, value):
-        return datetime.strptime(value, "%Y-%m-%d").date()
+        return datetime.strptime(value, "%Y-%m-%d").date()  # noqa: DTZ007
 
     @validates("registered")
     def validate_registered(self, key, value):

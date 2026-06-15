@@ -70,7 +70,7 @@ class TestQuery:
 
     def test_limit(self, session, users):
         res = select(User).rql("limit(2)").execute(session)
-        exp = [u for u in users][:2]
+        exp = list(users)[:2]
         assert res
         assert res == exp
 
@@ -146,16 +146,16 @@ class TestQuery:
         exp = len(users)
         assert res == exp
 
-    @pytest.mark.parametrize("user_id", (1, 2, 3))
+    @pytest.mark.parametrize("user_id", [1, 2, 3])
     def test_eq_operator(self, session, user_id, users):
-        res = select(User).rql("user_id={}".format(user_id)).execute(session)
+        res = select(User).rql(f"user_id={user_id}").execute(session)
         exp = [u for u in users if u.user_id == user_id]
         assert res
         assert res == exp
 
-    @pytest.mark.parametrize("balance", (1000, 2000, 3000))
+    @pytest.mark.parametrize("balance", [1000, 2000, 3000])
     def test_gt_operator(self, session, balance, users):
-        res = select(User).rql("gt(balance,{})".format(balance)).execute(session)
+        res = select(User).rql(f"gt(balance,{balance})").execute(session)
         exp = [u for u in users if u.balance > balance]
         assert res
         assert res == exp
